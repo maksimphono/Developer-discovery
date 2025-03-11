@@ -7,13 +7,15 @@ import re
 SCANNED_FILES_LIST_PATH = "/home/trukhinmaksim/Maksim/学习/Thesis/code/docker/container/src/data_processing/read_files_list.txt"
 USER_PROFILES_PATH = "/home/trukhinmaksim/Maksim/学习/Thesis/data/user_profiles"
 USER_PROJ_PARTICIPATE_PATH = "/home/trukhinmaksim/Maksim/学习/Thesis/data/user_proj_participate"
-OUTPUT_DIRECTORY = "/home/trukhinmaksim/Maksim/学习/Thesis/data/output/killme"
+OUTPUT_DIRECTORY = "/home/trukhinmaksim/Maksim/学习/Thesis/data/output"
 
 USER_PROFILES_IGNORE_LIST = []
 LOG_PATH = "/home/trukhinmaksim/Maksim/学习/Thesis/code/docker/container/src/data_processing/logs.txt"
 
 users_db: dict[dict] = {}
 projects_db: dict[dict] = {}
+evaluation_projects_db = [] # [{"proj_id" : project_1, "users" : [user_1, user_2, ...]}, {"proj_id" : project_2, "users" : [user_5, ...]}]
+
 scannedFilesNames = []
 
 class Stats:
@@ -81,12 +83,32 @@ class ProjectDataCreator:
             for project_id in dictObj["projects"].keys():
                 objs.append(dict({"id" : project_id}))
             return objs
+        
+    @classmethod
+    def projectIDfromCSVFileName(cls, fileName):
+        name = fileName.replace("user_profiles_github_", "")[:-4]
+        if name.count("_") > 1:
+            # process this filename manually
+            with open("./process_me.json", "a+", encoding="utf-8") as file:
+                json.dump({"collection" : "evaluation_projects", "name" : name, "note" : "Change the name into proper id of the project"}, file, ensure_ascii=False, indent=4)
+
+            return name
+        else:
+            return name.replace("_", "/")
+        
+    @classmethod
+    def createEvaluationProject(cls, fileName):
+        proj_id = cls.projectIDfromCSVFileName(fileName)
+
+        return {"proj_id" : proj_id, "users" : list()}
+
 
 def getProjectsDataFromDict(dictObj) -> list:
     objs = []
     for project_id in dictObj["projects"].keys():
         objs.append(dict({"id" : project_id}))
     return objs
+
 
 def readCSVDatabase(priorityFiles = [], limit = 2) -> str:
     ALLOWED_USER_TYPES = ["A", "B"]
@@ -98,6 +120,7 @@ def readCSVDatabase(priorityFiles = [], limit = 2) -> str:
         nonlocal count, filesNames
         print("Reading file ", fileName)
         filesNames.append(fileName)
+        evaluationProjectObj = ProjectDataCreator.createEvaluationProject(fileName)
 
         with open(os.path.join(root, fileName), encoding="utf-8") as file:
             file.readline()
@@ -105,6 +128,9 @@ def readCSVDatabase(priorityFiles = [], limit = 2) -> str:
             for userData in filter(lambda user: user["type"] in ALLOWED_USER_TYPES, map(UserDataCreator.fromCSV, lines)):
                 users_db[userData["id"]] = userData
 
+                evaluationProjectObj["users"].append(userData["id"])
+
+        evaluation_projects_db.append(evaluationProjectObj)
         ScannedFilesManager.add(fileName)
         count += 1
 
@@ -156,13 +182,20 @@ def readJSONDatabase(filesNamesToRead):
 
 
 def saveDatabases(database_id):
-    with open(os.path.join(OUTPUT_DIRECTORY, f"users_db_{database_id}.json"), "w", encoding="utf-8") as file:
-        json.dump(users_db, fp = file, ensure_ascii=False, indent=4, separators = (",", ":"))
-    with open(os.path.join(OUTPUT_DIRECTORY, f"projects_db_{database_id}.json"), "w", encoding="utf-8") as file:
-        json.dump(projects_db, fp = file, ensure_ascii=False, indent=4, separators = (",", ":"))
+    # save collected users
+    #with open(os.path.join(OUTPUT_DIRECTORY, f"users_db_{database_id}.json"), "w", encoding="utf-8") as file:
+    #    json.dump(users_db, fp = file, ensure_ascii=False, indent=4, separators = (",", ":"))
+    # save collected projects
+    #with open(os.path.join(OUTPUT_DIRECTORY, f"projects_db_{database_id}.json"), "w", encoding="utf-8") as file:
+    #    json.dump(projects_db, fp = file, ensure_ascii=False, indent=4, separators = (",", ":"))
+    # save collected projects with related users for evaluation
+    with open(os.path.join(OUTPUT_DIRECTORY, f"evaluation_projects_db_{database_id}.json"), "w", encoding="utf-8") as file:
+        json.dump(evaluation_projects_db, fp = file, ensure_ascii=False, indent=4, separators = (",", ":"))
 
     users_db.clear()
     projects_db.clear()
+    evaluation_projects_db.clear()
+
 
 class ScannedFilesManager:
     scannedFilesNames = []
@@ -195,12 +228,12 @@ def getScannedFiles():
 def main():
     # separating scanning logic, by scanning small amount of files at once
     PORTION_AMOUNT = 2
-    FILES_PER_PORTION = 3 # in total, (PORTION_AMOUNT * FILES_PER_PORTION) files will be scanned
+    FILES_PER_PORTION = 2 # in total (PORTION_AMOUNT * FILES_PER_PORTION) files will be scanned
     PRIORITY_CSV_FILES = [
-        #"user_profiles_github_23mf_react-native-translucent-modal.csv",
-        #user_profiles_github_2017398956_react-native-textinput-maxlength-fixed.csv",
-        #"user_profiles_github_a7ul_react-native-exception-handler.csv",
-        #"user_profiles_github_afollestad_material-dialogs.csv"
+        "user_profiles_github_23mf_react-native-translucent-modal.csv",
+        "user_profiles_github_2017398956_react-native-textinput-maxlength-fixed.csv",
+        "user_profiles_github_a7ul_react-native-exception-handler.csv",
+        "user_profiles_github_afollestad_material-dialogs.csv"
     ]
 
     stats = Stats()
