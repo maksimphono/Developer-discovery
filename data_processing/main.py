@@ -3,20 +3,57 @@ import os
 import json
 from copy import deepcopy
 import re
+from pymongo import MongoClient
 
 SCANNED_FILES_LIST_PATH = "/home/trukhinmaksim/Maksim/学习/Thesis/code/docker/container/src/data_processing/read_files_list.txt"
 USER_PROFILES_PATH = "/home/trukhinmaksim/Maksim/学习/Thesis/data/user_profiles"
 USER_PROJ_PARTICIPATE_PATH = "/home/trukhinmaksim/Maksim/学习/Thesis/data/user_proj_participate"
 OUTPUT_DIRECTORY = "/home/trukhinmaksim/Maksim/学习/Thesis/data/output"
 
+MY_DB_LINK = "mongodb://localhost:27020/"
 USER_PROFILES_IGNORE_LIST = []
 LOG_PATH = "/home/trukhinmaksim/Maksim/学习/Thesis/code/docker/container/src/data_processing/logs.txt"
 
+class SmallDatabaseCollection(dict):
+    client = None
+
+    @classmethod
+    def connect(cls):
+        cls.client = MongoClient(MY_DB_LINK)
+        # Access the database
+        #print(client)
+        return cls.client.mini_database
+        # Access the collection
+    @classmethod
+    def close(cls):
+        if cls.client:
+            cls.client.close()
+            cls.client = None
+
+    def __init__(self, collectionName, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.collectionName = collectionName
+
+    def save(self):
+        db = SmallDatabaseCollection.connect()
+
+        for data in self.values():
+            db[self.collectionName].insert_one(data)
+
+        SmallDatabaseCollection.close()
+
+users_db = SmallDatabaseCollection("users")
+projects_db = SmallDatabaseCollection("projects")
+evaluation_projects_db = SmallDatabaseCollection("evaluation_projects") # [{"proj_id" : project_1, "users" : [user_1, user_2, ...]}, {"proj_id" : project_2, "users" : [user_5, ...]}]
+
+scannedFilesNames = []
+"""
 users_db: dict[dict] = {}
 projects_db: dict[dict] = {}
 evaluation_projects_db = [] # [{"proj_id" : project_1, "users" : [user_1, user_2, ...]}, {"proj_id" : project_2, "users" : [user_5, ...]}]
 
 scannedFilesNames = []
+"""
 
 class Stats:
     def __init__(self, logFilePath = LOG_PATH, append = True):
@@ -130,7 +167,7 @@ def readCSVDatabase(priorityFiles = [], limit = 2) -> str:
 
                 evaluationProjectObj["users"].append(userData["id"])
 
-        evaluation_projects_db.append(evaluationProjectObj)
+        evaluation_projects_db[evaluationProjectObj["proj_id"]] = evaluationProjectObj
         ScannedFilesManager.add(fileName)
         count += 1
 
@@ -182,6 +219,15 @@ def readJSONDatabase(filesNamesToRead):
 
 
 def saveDatabases(database_id):
+    #users_db.save()
+    #projects_db.save()
+    evaluation_projects_db.save()
+    
+    users_db.clear()
+    projects_db.clear()
+    evaluation_projects_db.clear()
+
+def _saveDatabases(database_id):
     # save collected users
     #with open(os.path.join(OUTPUT_DIRECTORY, f"users_db_{database_id}.json"), "w", encoding="utf-8") as file:
     #    json.dump(users_db, fp = file, ensure_ascii=False, indent=4, separators = (",", ":"))
