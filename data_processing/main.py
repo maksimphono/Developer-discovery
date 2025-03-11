@@ -16,14 +16,13 @@ LOG_PATH = "/home/trukhinmaksim/Maksim/学习/Thesis/code/docker/container/src/d
 
 class SmallDatabaseCollection(dict):
     client = None
+    link = ""
 
     @classmethod
     def connect(cls):
-        cls.client = MongoClient(MY_DB_LINK)
-        # Access the database
-        #print(client)
+        cls.client = MongoClient(cls.link)
+
         return cls.client.mini_database
-        # Access the collection
     @classmethod
     def close(cls):
         if cls.client:
@@ -35,16 +34,32 @@ class SmallDatabaseCollection(dict):
         self.collectionName = collectionName
 
     def save(self):
-        db = SmallDatabaseCollection.connect()
+        cls = type(self)
+        db = cls.connect()
 
         for data in self.values():
             db[self.collectionName].insert_one(data)
 
-        SmallDatabaseCollection.close()
+        cls.close()
 
-users_db = SmallDatabaseCollection("users")
-projects_db = SmallDatabaseCollection("projects")
-evaluation_projects_db = SmallDatabaseCollection("evaluation_projects") # [{"proj_id" : project_1, "users" : [user_1, user_2, ...]}, {"proj_id" : project_2, "users" : [user_5, ...]}]
+class Collection_Mongo(SmallDatabaseCollection):
+    link = MY_DB_LINK
+
+class Collection_Files(SmallDatabaseCollection):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dbCounter = 0
+
+    def save(self):            
+        with open(os.path.join(OUTPUT_DIRECTORY, f"{self.collectionName}{self.dbCounter}.json"), "w", encoding="utf-8") as file:
+            json.dump(list(self.values()), fp = file, ensure_ascii=False, indent=4, separators = (",", ":"))
+
+        self.dbCounter += 1
+
+
+users_db = Collection_Mongo("users")
+projects_db = Collection_Mongo("projects")
+evaluation_projects_db = Collection_Mongo("evaluation_projects") # [{"proj_id" : project_1, "users" : [user_1, user_2, ...]}, {"proj_id" : project_2, "users" : [user_5, ...]}]
 
 scannedFilesNames = []
 """
