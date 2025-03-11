@@ -50,25 +50,18 @@ class Collection_Files(SmallDatabaseCollection):
         super().__init__(*args, **kwargs)
         self.dbCounter = 0
 
-    def save(self):            
-        with open(os.path.join(OUTPUT_DIRECTORY, f"{self.collectionName}{self.dbCounter}.json"), "w", encoding="utf-8") as file:
+    # override
+    def save(self):
+        with open(os.path.join(OUTPUT_DIRECTORY, f"{self.collectionName}_db_{self.dbCounter}.json"), "w", encoding="utf-8") as file:
             json.dump(list(self.values()), fp = file, ensure_ascii=False, indent=4, separators = (",", ":"))
 
         self.dbCounter += 1
 
 
-users_db = Collection_Mongo("users")
-projects_db = Collection_Mongo("projects")
-evaluation_projects_db = Collection_Mongo("evaluation_projects") # [{"proj_id" : project_1, "users" : [user_1, user_2, ...]}, {"proj_id" : project_2, "users" : [user_5, ...]}]
+users_db = Collection_Files("users")
+projects_db = Collection_Files("projects")
+evaluation_projects_db = Collection_Files("evaluation_projects") # [{"proj_id" : project_1, "users" : [user_1, user_2, ...]}, {"proj_id" : project_2, "users" : [user_5, ...]}]
 
-scannedFilesNames = []
-"""
-users_db: dict[dict] = {}
-projects_db: dict[dict] = {}
-evaluation_projects_db = [] # [{"proj_id" : project_1, "users" : [user_1, user_2, ...]}, {"proj_id" : project_2, "users" : [user_5, ...]}]
-
-scannedFilesNames = []
-"""
 
 class Stats:
     def __init__(self, logFilePath = LOG_PATH, append = True):
@@ -102,9 +95,33 @@ class Stats:
         self.flash()
 
 
+class ScannedFilesManager:
+    scannedFilesNames = []
+    @classmethod
+    def get(cls) -> list:
+        with open(SCANNED_FILES_LIST_PATH, encoding="utf-8") as file:
+            cls.scannedFilesNames = list(map(lambda s: s[:-1] if s[-1] == "\n" else s, file.readlines()))
+
+        return cls.scannedFilesNames
+
+    @classmethod
+    def update(cls):
+        # writes all scanned files names from the array to the file
+        with open(SCANNED_FILES_LIST_PATH, "w", encoding="utf-8") as file:
+            for filePath in cls.scannedFilesNames:
+                print(filePath, file = file)
+
+    @classmethod
+    def add(cls, name):
+        cls.scannedFilesNames.append(name)
+
+
 class UserDataCreator:
     attr_list = ["id", "type", "projects"]
-    default_values = ["0", "U", list()] # U = unknown 
+    default_values = ["0", "U", list()] # U = unknown
+
+    class many:
+        pass
     @classmethod
     def createEmpty(cls):
         return dict(zip(UserDataCreator.attr_list, deepcopy(UserDataCreator.default_values)))
@@ -154,14 +171,6 @@ class ProjectDataCreator:
 
         return {"proj_id" : proj_id, "users" : list()}
 
-
-def getProjectsDataFromDict(dictObj) -> list:
-    objs = []
-    for project_id in dictObj["projects"].keys():
-        objs.append(dict({"id" : project_id}))
-    return objs
-
-
 def readCSVDatabase(priorityFiles = [], limit = 2) -> str:
     ALLOWED_USER_TYPES = ["A", "B"]
     count = 0
@@ -209,7 +218,7 @@ def readJSONDatabase(filesNamesToRead):
         with open(os.path.join(USER_PROJ_PARTICIPATE_PATH, fileName), encoding="utf-8") as file:
             for line in file.readlines():
                 data: dict = json.loads(line)
-                projectsDataList: list[dict] = ProjectDataCreator.many.fromDict(data) #getProjectsDataFromDict(data)
+                projectsDataList: list[dict] = ProjectDataCreator.many.fromDict(data)
                 user_id: str = data["user_id"]
                 userProjects: list[dict] = data["projects"]
 
@@ -233,58 +242,19 @@ def readJSONDatabase(filesNamesToRead):
                             projects_db[id] = deepcopy(projData)
 
 
-def saveDatabases(database_id):
-    #users_db.save()
-    #projects_db.save()
+def saveDatabases():
+    users_db.save()
+    projects_db.save()
     evaluation_projects_db.save()
-    
-    users_db.clear()
-    projects_db.clear()
-    evaluation_projects_db.clear()
-
-def _saveDatabases(database_id):
-    # save collected users
-    #with open(os.path.join(OUTPUT_DIRECTORY, f"users_db_{database_id}.json"), "w", encoding="utf-8") as file:
-    #    json.dump(users_db, fp = file, ensure_ascii=False, indent=4, separators = (",", ":"))
-    # save collected projects
-    #with open(os.path.join(OUTPUT_DIRECTORY, f"projects_db_{database_id}.json"), "w", encoding="utf-8") as file:
-    #    json.dump(projects_db, fp = file, ensure_ascii=False, indent=4, separators = (",", ":"))
-    # save collected projects with related users for evaluation
-    with open(os.path.join(OUTPUT_DIRECTORY, f"evaluation_projects_db_{database_id}.json"), "w", encoding="utf-8") as file:
-        json.dump(evaluation_projects_db, fp = file, ensure_ascii=False, indent=4, separators = (",", ":"))
 
     users_db.clear()
     projects_db.clear()
     evaluation_projects_db.clear()
-
-
-class ScannedFilesManager:
-    scannedFilesNames = []
-    @classmethod
-    def get(cls) -> list:
-        with open(SCANNED_FILES_LIST_PATH, encoding="utf-8") as file:
-            cls.scannedFilesNames = list(map(lambda s: s[:-1] if s[-1] == "\n" else s, file.readlines()))
-
-        return cls.scannedFilesNames
-
-    @classmethod
-    def update(cls):
-        with open(SCANNED_FILES_LIST_PATH, "w", encoding="utf-8") as file:
-            for filePath in cls.scannedFilesNames:
-                print(filePath, file = file)
-
-    @classmethod
-    def add(cls, name):
-        cls.scannedFilesNames.append(name)
 
 
 def getScannedFiles():
     with open(SCANNED_FILES_LIST_PATH, encoding="utf-8") as file:
         return list(file.readlines())
-    
-#def updateScannedFiles():
-#    with open(SCANNED_FILES_LIST_PATH, "a+", encoding="utf-8") as file:
-#        [file.write(filePath) for filePath in scannedFilesNames[]]
 
 def main():
     # separating scanning logic, by scanning small amount of files at once
@@ -310,12 +280,9 @@ def main():
         print(f"Scanned {len(projects_db)} projects")
         #stats.logDBinfo()
 
-        saveDatabases(i)
+        saveDatabases()
 
     ScannedFilesManager.update()
-
-    #with open("read_files_list.txt", "w") as file:
-    #    file.write("\n".join(scannedFilesNames))
 
     stats.logFinal()
 
