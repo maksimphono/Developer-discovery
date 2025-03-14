@@ -74,3 +74,51 @@ Total projects number scanned: 0
 	Scanned CSV files:
 		['user_profiles_github_23mf_react-native-translucent-modal.csv', 'user_profiles_github_2017398956_react-native-textinput-maxlength-fixed.csv', 'user_profiles_github_a7ul_react-native-exception-handler.csv', 'user_profiles_github_afollestad_material-dialogs.csv', 'user_profiles_github_reduxjs_redux.csv', 'user_profiles_github_penfeizhou_APNG4Android.csv', 'user_profiles_github_mborgerding_kissfft.csv', 'user_profiles_github_madler_zlib.csv', 'user_profiles_github_jmespath_jmespath.js.csv', 'user_profiles_github_google_double-conversion.csv']
 END
+
+START
+
+Total users number scanned: 0
+Total projects number scanned: 0
+	Scanned CSV files:
+		['user_profiles_github_23mf_react-native-translucent-modal.csv', 'user_profiles_github_2017398956_react-native-textinput-maxlength-fixed.csv', 'user_profiles_github_a7ul_react-native-exception-handler.csv', 'user_profiles_github_afollestad_material-dialogs.csv']
+END
+
+START
+
+Total users number scanned: 0
+Total projects number scanned: 0
+	Scanned CSV files:
+		['user_profiles_github_23mf_react-native-translucent-modal.csv', 'user_profiles_github_2017398956_react-native-textinput-maxlength-fixed.csv', 'user_profiles_github_a7ul_react-native-exception-handler.csv', 'user_profiles_github_afollestad_material-dialogs.csv', 'user_profiles_github_reduxjs_redux.csv', 'user_profiles_github_penfeizhou_APNG4Android.csv', 'user_profiles_github_mborgerding_kissfft.csv', 'user_profiles_github_madler_zlib.csv']
+END
+
+START
+
+Total users number scanned: 0
+Total projects number scanned: 0
+	Scanned CSV files:
+		['user_profiles_github_23mf_react-native-translucent-modal.csv', 'user_profiles_github_2017398956_react-native-textinput-maxlength-fixed.csv', 'user_profiles_github_a7ul_react-native-exception-handler.csv', 'user_profiles_github_afollestad_material-dialogs.csv']
+END
+
+START
+
+Total users number scanned: 0
+Total projects number scanned: 0
+	Scanned CSV files:
+		['user_profiles_github_23mf_react-native-translucent-modal.csv', 'user_profiles_github_2017398956_react-native-textinput-maxlength-fixed.csv', 'user_profiles_github_a7ul_react-native-exception-handler.csv', 'user_profiles_github_afollestad_material-dialogs.csv']
+END
+
+START
+
+Total users number scanned: 0
+Total projects number scanned: 0
+	Scanned CSV files:
+		['user_profiles_github_23mf_react-native-translucent-modal.csv', 'user_profiles_github_2017398956_react-native-textinput-maxlength-fixed.csv', 'user_profiles_github_a7ul_react-native-exception-handler.csv', 'user_profiles_github_afollestad_material-dialogs.csv', 'user_profiles_github_reduxjs_redux.csv', 'user_profiles_github_penfeizhou_APNG4Android.csv', 'user_profiles_github_mborgerding_kissfft.csv', 'user_profiles_github_madler_zlib.csv']
+END
+
+START
+
+Total users number scanned: 0
+Total projects number scanned: 0
+	Scanned CSV files:
+		['user_profiles_github_23mf_react-native-translucent-modal.csv', 'user_profiles_github_2017398956_react-native-textinput-maxlength-fixed.csv', 'user_profiles_github_a7ul_react-native-exception-handler.csv', 'user_profiles_github_afollestad_material-dialogs.csv']
+END
