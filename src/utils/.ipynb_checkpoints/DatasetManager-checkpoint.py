@@ -1,0 +1,181 @@
+import sys
+sys.path.append('/home/trukhinmaksim/src')
+
+from numpy import array
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+import string
+from copy import deepcopy
+import re
+import argostranslate.package
+import argostranslate.translate
+
+from src.utils.CacheAdapter import JSONAdapter
+
+def download_CN_EN_ArgosPackage():
+    argostranslate.package.update_package_index()
+    available_packages = argostranslate.package.get_available_packages()
+    print(available_packages)
+    cn_en_pkg = next(filter(lambda pkg: pkg.from_code == "zh" and pkg.to_code == "en", available_packages))
+    print(cn_en_pkg)
+    argostranslate.package.install_from_path(cn_en_pkg.download())
+
+
+class ProjectsDatasetManager:
+    usersCollection = None
+    projectsCollection = None
+
+    def __init__(self, userNumber = float("inf"), validate = lambda data: True, cacheAdapter = None):
+        self.userNumber = userNumber
+        self.validate = validate
+        self.data = None
+        self.preprocessed = False
+        self.ignoredUsers = []
+        #download_CN_EN_ArgosPackage()
+        
+        if cacheAdapter == None: 
+            self.cacheAdapter = JSONAdapter()
+        else:
+            self.cacheAdapter = cacheAdapter
+
+    def ignoreUsers(self, users_ids : list[str]):
+        self.ignoredUsers.extend(users_ids)
+    
+    def fromCache(self):
+        self.data = self.cacheAdapter.load()
+
+        # it is assumed, that cache only contains already preprocessed data
+        self.preprocessed = True
+        return self.data
+
+    def fromDB(self):
+        self.data = self.getProjectsDataForUsers()
+        self.preprocessed = False # assume, that database contains unprocessed data
+        return self.data
+
+    def getProjectsDataForUsers(self) -> dict[str, list]:
+        # will return a dictionary, where keys are users ids and values are lists of projects ids, each user has contributed to
+        i = 0
+        count = self.userNumber
+        cursor = ProjectsDatasetManager.usersCollection.find()
+        data = {}
+
+        for user in cursor:
+            if count <= 0: break
+            if user["id"] in self.ignoredUsers: continue # if that user must be ignored, just skip to the next one
+            print(f"Scanning user: {i}")
+            projectsIDList = user["projects"]
+
+            projects = []
+
+            for proj_id in projectsIDList:
+                projectData = ProjectsDatasetManager.projectsCollection.find_one({"id" : proj_id}, {"_id" : False})
+
+                if self.validate(projectData):
+                    projects.append(projectData)
+        
+            if len(projects):
+                # if user has at least one project he contributed to
+                data[user["id"]] = deepcopy(projects)
+                count -= 1
+
+            i += 1
+
+        return data
+
+    def translateText(self, text):
+        # will try to use Google Translate, but if any error occures, will use Argos offline translator
+        if text.isascii(): return text
+
+        try:
+            import asyncio
+            import nest_asyncio
+
+            async def inner():
+                nonlocal text
+                from googletrans import Translator
+
+                async with Translator() as translator:
+                    result = await translator.translate(text, dest = "en")
+
+                return result
+
+            nest_asyncio.apply()  # Patch the event loop    
+            return asyncio.run(inner()).text
+
+        except Exception as exp:
+            # assume, that the text is in Chinese and translate it using argos translator
+            print(f"Using Argos for {text[:10]}...")
+            return argostranslate.translate.translate(text, "zh", "en")
+            """
+            if str(type(exp)) == "<class 'httpx.ConnectError'>":
+                return text
+            else:
+                raise exp
+            """
+
+    def textPreprocessing(self, text):
+        # Initialize tools
+        stop_words = set(stopwords.words("english") + ["etc"])
+        lemmatizer = WordNetLemmatizer()
+
+        # Translate:
+        #text = self.translateText(text)
+        # Remove unicode:
+        text = text.encode("ascii", "ignore").decode()
+        # Process camel case:
+        #text = processCamelCase(text)
+        # Lower the text:
+        text = text.lower()
+        # Remove punctuation:
+        text = text.translate(str.maketrans(string.punctuation, " " * len(string.punctuation)))
+        # Remove stop-words:
+        #text = re.sub("\s" + "|".join(stop_words) + "\s", " ", text)
+        # Remove numbers:
+        text = re.sub(r"\d", " ", text)
+        # Remove new lines:
+        text = re.sub(r"\n", " ", text)
+        # Remove multiple spaces:
+        text = re.sub("\s+", " ", text).strip()
+    
+        tokens = [word for word in word_tokenize(text) if word not in stop_words and len(word) > 1]  # Tokenize into words
+        
+        tokens = [lemmatizer.lemmatize(word) for word in tokens]  # Remove stopwords & lemmatize
+
+        return tokens
+
+    def projectsDataPreprocessing(self, projects : array(dict), including_text : bool = False) -> array([{"tokens" : str, "tags" : list}]):
+        # will take in an array of projects and prepare it to be consumed by the model
+        # takes: array of projects (as dictionaries); returns: text data and tags for every project in array
+        result = []
+
+        for proj in projects:
+            joinedText = " ".join([proj["name"], proj["description"]])
+
+            tockens = self.textPreprocessing(joinedText)
+            tags = [proj["id"], proj["name"], proj["language"]] + proj["topics"]# if proj["language"] else proj["topics"]
+            if including_text:
+                result.append({"text" : joinedText, "tokens" : tockens, "tags" : tags})
+            else:
+                result.append({"tokens" : tockens, "tags" : tags})
+
+        return array(result)
+
+    def preprocess(self, _data : dict | None = None, including_text : bool = False) -> dict[str, list]:
+        if self.preprocessed: return self.data
+
+        if _data:
+            data = _data
+        elif self.data:
+            data = self.data
+        else:
+            return self.fromCache()
+
+        for user_id, projs in data.items():
+            #print(type(array(userProjs)))
+            data[user_id] = self.projectsDataPreprocessing(projs, including_text)
+
+        self.preprocessed = True
+        return data
