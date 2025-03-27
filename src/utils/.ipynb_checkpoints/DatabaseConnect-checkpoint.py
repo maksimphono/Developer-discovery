@@ -37,3 +37,7 @@ class DatabaseConnect:
         @classmethod
         def users(cls):
             return cls.connect('mini_database')['users']
+
+        @classmethod
+        def cache(cls):
+            return cls.connect('mini_database')['cache']
