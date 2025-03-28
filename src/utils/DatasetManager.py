@@ -12,16 +12,20 @@ import re
 from collections import defaultdict
 import argostranslate.package
 import argostranslate.translate
+from random import random
+from time import sleep
+from langdetect import detect
 
 from src.utils.CacheAdapter import JSONAdapter
 
-def download_CN_EN_ArgosPackage():
+def downloadArgosLangPackages(langList = ["es", "pt", "zh", "zt", "ru", "de", "ja", "ko"]):
     argostranslate.package.update_package_index()
     available_packages = argostranslate.package.get_available_packages()
-    print(available_packages)
-    cn_en_pkg = next(filter(lambda pkg: pkg.from_code == "zh" and pkg.to_code == "en", available_packages))
-    print(cn_en_pkg)
-    argostranslate.package.install_from_path(cn_en_pkg.download())
+    packages = list(filter(lambda pkg: pkg.from_code in langList and pkg.to_code == "en", available_packages))
+    print(packages)
+    for pkg in packages:
+        argostranslate.package.install_from_path(pkg.download())
+
 
 class IgnoreList(dict):
     def includes(self, item):
@@ -126,36 +130,42 @@ class ProjectsDatasetManager:
 
         return data
 
-    def translateText(self, text):
+    def translateText(self, text, retry = 3):
         # will try to use Google Translate, but if any error occures, will use Argos offline translator
         if text.isascii(): return text
 
-        try:
-            import asyncio
-            import nest_asyncio
+        for i in range(retry):
+            try:
+                import asyncio
+                import nest_asyncio
 
-            async def inner():
-                nonlocal text
-                from googletrans import Translator
+                async def inner():
+                    nonlocal text
+                    from googletrans import Translator
 
-                async with Translator() as translator:
-                    result = await translator.translate(text, dest = "en")
+                    async with Translator() as translator:
+                        result = await translator.translate(text, dest = "en")
 
-                return result
+                    return result
 
-            nest_asyncio.apply()  # Patch the event loop    
-            return asyncio.run(inner()).text
+                nest_asyncio.apply()  # Patch the event loop    
+                return asyncio.run(inner()).text
 
-        except Exception as exp:
-            # assume, that the text is in Chinese and translate it using argos translator
-            print(f"Using Argos for {text[:10]}...")
-            return argostranslate.translate.translate(text, "zh", "en")
-            """
-            if str(type(exp)) == "<class 'httpx.ConnectError'>":
-                return text
-            else:
-                raise exp
-            """
+            except Exception as exp:
+                # assume, that the text is in Chinese and translate it using argos translator
+                sleep(random() * 8)
+                print("Conection error, retrying")
+                continue
+
+        langCode = detect(text)[:2]
+        print(f"Translation Faled after {retry} attempts, Using Argos for {text[:10]}...\nLanguage detected as: {langCode}")
+        return argostranslate.translate.translate(text, langCode, "en")
+        """
+        if str(type(exp)) == "<class 'httpx.ConnectError'>":
+            return text
+        else:
+            raise exp
+        """
 
     def textPreprocessing(self, text):
         # Initialize tools
@@ -163,7 +173,7 @@ class ProjectsDatasetManager:
         lemmatizer = WordNetLemmatizer()
 
         # Translate:
-        #text = self.translateText(text)
+        text = self.translateText(text)
         # Remove unicode:
         text = text.encode("ascii", "ignore").decode()
         # Process camel case:
