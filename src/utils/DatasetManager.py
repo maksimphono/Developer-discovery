@@ -1,7 +1,7 @@
 import sys
 sys.path.append('/home/trukhinmaksim/src')
 
-from numpy import array
+from numpy import array, ndarray
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
@@ -9,6 +9,7 @@ from nltk.stem import WordNetLemmatizer
 import string
 from copy import deepcopy
 import re
+from collections import defaultdict
 import argostranslate.package
 import argostranslate.translate
 
@@ -22,6 +23,37 @@ def download_CN_EN_ArgosPackage():
     print(cn_en_pkg)
     argostranslate.package.install_from_path(cn_en_pkg.download())
 
+class IgnoreList(dict):
+    def includes(self, item):
+        return self[item]
+
+    def __getitem__(self, item):
+        try:
+            return super().__getitem__(item)
+        except KeyError:
+            return False
+
+    def extend(self, collection):
+        if type(collection) in [dict, defaultdict]:
+            self.update(collection)
+
+        elif type(collection) in [list, ndarray, array]:
+            for item in collection:
+                self[item] = True
+
+        else:
+            raise Exception("method IgnoreList.extend must take dict, array or list")
+
+    def add(self, item):
+        self[item] = True
+
+    def remove(self, item):
+        del self[item]
+
+    def __iter__(self):
+        for item in self.keys():
+            yield item
+
 
 class ProjectsDatasetManager:
     usersCollection = None
@@ -32,7 +64,7 @@ class ProjectsDatasetManager:
         self.validate = validate
         self.data = None
         self.preprocessed = False
-        self.ignoredUsers = []
+        self.ignoredUsers = IgnoreList()
         #download_CN_EN_ArgosPackage()
         
         if cacheAdapter == None: 
@@ -40,8 +72,17 @@ class ProjectsDatasetManager:
         else:
             self.cacheAdapter = cacheAdapter
 
-    def ignoreUsers(self, users_ids : list[str]):
-        self.ignoredUsers.extend(users_ids)
+    def clearData(self):
+        self.data.clear()
+        self.preprocessed = False
+
+    def ignoreUsers(self, users_ids : list[str] | str):
+        if type(users_ids) == str:
+            # path to the file with ignored users is specified
+            with open(users_ids, encoding="utf-8") as file:
+                self.ignoredUsers.extend(json.load(file))
+        else:
+            self.ignoredUsers.extend(users_ids)
     
     def fromCache(self):
         self.data = self.cacheAdapter.load()
@@ -64,7 +105,7 @@ class ProjectsDatasetManager:
 
         for user in cursor:
             if count <= 0: break
-            if user["id"] in self.ignoredUsers: continue # if that user must be ignored, just skip to the next one
+            if self.ignoredUsers.includes(user["id"]): continue # if that user must be ignored, just skip to the next one
             print(f"Scanning user: {i}")
             projectsIDList = user["projects"]
 
@@ -161,7 +202,7 @@ class ProjectsDatasetManager:
             else:
                 result.append({"tokens" : tockens, "tags" : tags})
 
-        return array(result)
+        return result
 
     def preprocess(self, _data : dict | None = None, including_text : bool = False) -> dict[str, list]:
         if self.preprocessed: return self.data

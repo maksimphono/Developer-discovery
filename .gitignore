@@ -1,6 +1,8 @@
 *checkpoint.ipynb
-*.ipynb_checkpoints/*
+*.ipynb_checkpoints*
 .ipynb_checkpoints/*.ipynb
 .ipynb_checkpoints/Main_Notebook-checkpoint.ipynb
 mycache/*
 mycache/preprocessedData_19-03-25.json
+data/*
+*-checkpoint.ipynb

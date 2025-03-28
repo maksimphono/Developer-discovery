@@ -1,7 +1,7 @@
 import os
 import json
 
-PREPROCESSED_DATA_CACHE_PATH = "/home/trukhinmaksim/src/mycache"
+PREPROCESSED_DATA_CACHE_PATH = "/home/trukhinmaksim/src/data/cache"
 
 class CacheAdapter:
     def __init__(self, collectionName = ""):
