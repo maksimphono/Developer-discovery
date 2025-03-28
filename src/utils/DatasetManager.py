@@ -132,7 +132,7 @@ class ProjectsDatasetManager:
 
     def translateText(self, text, retry = 3):
         # will try to use Google Translate, but if any error occures, will use Argos offline translator
-        if text.isascii(): return text
+        if text.isascii() or detect(text) == "en": return text # if the text is already english (either ascii or english with unicode emoji)
 
         for i in range(retry):
             try:
