@@ -141,7 +141,7 @@ class ProjectsDatasetManager:
         if useServer:
             translatorURL = choice(ProjectsDatasetManager.translatorServers)
 
-            print(dumps({"text" : text}, ensure_ascii=False, indent=4))
+            print(translatorURL)
             response = requests.request("POST", url = translatorURL, headers = {'Content-Type': 'application/json'}, data = dumps({"text" : text}, ensure_ascii=False, indent=4))
 
             print(response)
@@ -188,7 +188,7 @@ class ProjectsDatasetManager:
         lemmatizer = WordNetLemmatizer()
 
         # Translate:
-        text = self.translateText(text)
+        text = self.translateText(text, 3, True)
         # Remove unicode:
         text = text.encode("ascii", "ignore").decode()
         # Process camel case:
