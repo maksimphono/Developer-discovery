@@ -12,14 +12,12 @@ import re
 from collections import defaultdict
 import argostranslate.package
 import argostranslate.translate
-from random import random, choice
+from random import random
 from time import sleep
 from langdetect import detect
 import requests
-import asyncio
-import nest_asyncio
-from googletrans import Translator
 from json import dumps
+from random import choice
 
 from src.utils.CacheAdapter import JSONAdapter
 
@@ -67,7 +65,7 @@ class IgnoreList(dict):
 class ProjectsDatasetManager:
     usersCollection = None
     projectsCollection = None
-    translatorServers = [] # list of urls of translator servers
+    translatorServers = []
 
     def __init__(self, userNumber = float("inf"), validate = lambda data: True, cacheAdapter = None):
         self.userNumber = userNumber
@@ -136,17 +134,15 @@ class ProjectsDatasetManager:
 
         return data
 
-    def translateText(self, text, retry = 3, useServers = False):
+    def translateText(self, text, retry = 3, useServer = False):
         # will try to use Google Translate, but if any error occures, will use Argos offline translator
         if text.isascii() or detect(text) == "en": return text # if the text is already english (either ascii or english with unicode emoji)
 
-        if useServers:
-            # will select one server at random and make a request to translate the text to it 
+        if useServer:
             translatorURL = choice(ProjectsDatasetManager.translatorServers)
 
-            print(translatorURL)
-
-            response = requests.request("POST", url = translatorURL, headers = {"Content-Type": "application/json"}, data = dumps({"text" : text}, ensure_ascii=False, indent=4))
+            print(dumps({"text" : text}, ensure_ascii=False, indent=4))
+            response = requests.request("POST", url = translatorURL, headers = {'Content-Type': 'application/json'}, data = dumps({"text" : text}, ensure_ascii=False, indent=4))
 
             print(response)
             if response.ok:
@@ -154,8 +150,12 @@ class ProjectsDatasetManager:
         else:
             for i in range(retry):
                 try:
+                    import asyncio
+                    import nest_asyncio
+
                     async def inner():
                         nonlocal text
+                        from googletrans import Translator
 
                         async with Translator() as translator:
                             result = await translator.translate(text, dest = "en")
@@ -188,7 +188,7 @@ class ProjectsDatasetManager:
         lemmatizer = WordNetLemmatizer()
 
         # Translate:
-        text = self.translateText(text, 3, False)
+        text = self.translateText(text)
         # Remove unicode:
         text = text.encode("ascii", "ignore").decode()
         # Process camel case:
