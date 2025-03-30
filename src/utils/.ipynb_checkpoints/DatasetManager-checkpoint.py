@@ -153,11 +153,12 @@ class ProjectsDatasetManager:
 
             except Exception as exp:
                 # assume, that the text is in Chinese and translate it using argos translator
-                sleep(random() * 8)
+                sleep(random() * 6)
                 print("Conection error, retrying")
                 continue
 
         langCode = detect(text)[:2]
+        if langCode not in ["es", "pt", "zh", "zt", "ru", "de", "ja", "ko"]: langCode = "zh" # If language is unknown, assuming it is Chinese
         print(f"Translation Faled after {retry} attempts, Using Argos for {text[:10]}...\nLanguage detected as: {langCode}")
         return argostranslate.translate.translate(text, langCode, "en")
         """

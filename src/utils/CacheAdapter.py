@@ -3,6 +3,8 @@ import json
 
 PREPROCESSED_DATA_CACHE_PATH = "/home/trukhinmaksim/src/data/cache"
 
+EXP_END_OF_DATA = Exception("Entire dataset has been fed from cache")
+
 class CacheAdapter:
     def __init__(self, collectionName = ""):
         self.collectionName = collectionName
@@ -31,8 +33,11 @@ class JSONAdapter(CacheAdapter):
 
         print(fileName)
 
-        with open(os.path.join(JSONAdapter.PREPROCESSED_DATA_CACHE_PATH, fileName), encoding = "utf-8") as file:
-            return json.load(file)
+        try:
+            with open(os.path.join(JSONAdapter.PREPROCESSED_DATA_CACHE_PATH, fileName), encoding = "utf-8") as file:
+                return json.load(file)
+        except FileNotFoundError:
+            raise EXP_END_OF_DATA
 
     def save(self, data):
         # will write data into the predefined JSON file
