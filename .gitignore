@@ -6,3 +6,5 @@ mycache/*
 mycache/preprocessedData_19-03-25.json
 data/*
 *-checkpoint.ipynb
+logs/*.json
+logs/ignoreUsers.json
