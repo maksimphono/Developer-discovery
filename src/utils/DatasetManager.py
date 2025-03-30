@@ -141,10 +141,9 @@ class ProjectsDatasetManager:
         if useServer:
             translatorURL = choice(ProjectsDatasetManager.translatorServers)
 
-            print(translatorURL)
+            #print(translatorURL)
             response = requests.request("POST", url = translatorURL, headers = {'Content-Type': 'application/json'}, data = dumps({"text" : text}, ensure_ascii=False, indent=4))
 
-            print(response)
             if response.ok:
                 return response.json()["translate"]
         else:
