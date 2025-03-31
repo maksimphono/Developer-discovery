@@ -1,9 +1,12 @@
 import os
 import json
 
-PREPROCESSED_DATA_CACHE_PATH = "/home/trukhinmaksim/src/data/cache"
+PREPROCESSED_DATA_CACHE_PATH = "/home/trukhinmaksim/src/data/cache_31-03-25"
 
-EXP_END_OF_DATA = Exception("Entire dataset has been fed from cache")
+class EXP_END_OF_DATA(Exception):
+    pass
+
+#EXP_END_OF_DATA = MyExp("Entire dataset has been fed from cache")
 
 class CacheAdapter:
     def __init__(self, collectionName = ""):

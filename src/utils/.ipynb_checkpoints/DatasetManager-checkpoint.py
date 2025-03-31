@@ -108,7 +108,7 @@ class ProjectsDatasetManager:
         # will return a dictionary, where keys are users ids and values are lists of projects ids, each user has contributed to
         i = 0
         count = self.userNumber
-        cursor = ProjectsDatasetManager.usersCollection.find()
+        cursor = ProjectsDatasetManager.usersCollection.find().skip(len(self.ignoredUsers))
         data = {}
 
         for user in cursor:
@@ -190,7 +190,7 @@ class ProjectsDatasetManager:
         lemmatizer = WordNetLemmatizer()
 
         # Translate:
-        text = self.translateText(text, 3)
+        text = self.translateText(text, 3, True)
         # Remove unicode:
         text = text.encode("ascii", "ignore").decode()
         # Process camel case:
