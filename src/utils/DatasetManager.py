@@ -190,7 +190,7 @@ class ProjectsDatasetManager:
         lemmatizer = WordNetLemmatizer()
 
         # Translate:
-        text = self.translateText(text, 3, True)
+        text = self.translateText(text, 3)
         # Remove unicode:
         text = text.encode("ascii", "ignore").decode()
         # Process camel case:
