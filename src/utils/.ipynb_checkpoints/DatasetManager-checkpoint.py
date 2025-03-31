@@ -113,24 +113,27 @@ class ProjectsDatasetManager:
 
         for user in cursor:
             if count <= 0: break
-            if self.ignoredUsers.includes(user["id"]): continue # if that user must be ignored, just skip to the next one
-            print(f"Scanning user: {i}")
-            projectsIDList = user["projects"]
+            if self.ignoredUsers.includes(user["id"]):
+                #print(f"{user['id']} ignored")
+                continue # if that user must be ignored, just skip to the next one
+            else:
+                projectsIDList = user["projects"]
 
-            projects = []
+                projects = []
 
-            for proj_id in projectsIDList:
-                projectData = ProjectsDatasetManager.projectsCollection.find_one({"id" : proj_id}, {"_id" : False})
+                for proj_id in projectsIDList:
+                    projectData = ProjectsDatasetManager.projectsCollection.find_one({"id" : proj_id}, {"_id" : False})
 
-                if self.validate(projectData):
-                    projects.append(projectData)
+                    if self.validate(projectData):
+                        projects.append(projectData)
         
-            if len(projects):
-                # if user has at least one project he contributed to
-                data[user["id"]] = deepcopy(projects)
-                count -= 1
+                if len(projects):
+                    # if user has at least one project he contributed to
+                    print(f"Scanning user: {user['id']}")
+                    data[user["id"]] = deepcopy(projects)
+                    count -= 1
 
-            i += 1
+                i += 1
 
         return data
 
@@ -147,14 +150,14 @@ class ProjectsDatasetManager:
             if response.ok:
                 return response.json()["translate"]
         else:
+            import asyncio
+            import nest_asyncio
+            from googletrans import Translator
+
             for i in range(retry):
                 try:
-                    import asyncio
-                    import nest_asyncio
-
                     async def inner():
                         nonlocal text
-                        from googletrans import Translator
 
                         async with Translator() as translator:
                             result = await translator.translate(text, dest = "en")
@@ -187,7 +190,7 @@ class ProjectsDatasetManager:
         lemmatizer = WordNetLemmatizer()
 
         # Translate:
-        text = self.translateText(text, 3, True)
+        text = self.translateText(text, 3)
         # Remove unicode:
         text = text.encode("ascii", "ignore").decode()
         # Process camel case:
