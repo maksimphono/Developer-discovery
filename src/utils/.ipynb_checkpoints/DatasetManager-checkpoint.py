@@ -73,6 +73,10 @@ class ProjectsDatasetManager:
         self.data = None
         self.preprocessed = False
         self.ignoredUsers = IgnoreList()
+        if ProjectsDatasetManager.usersCollection:
+            self.cursor = ProjectsDatasetManager.usersCollection.find()
+        else:
+            self.cursor = None # not specified, then the cursor will be set later manually
         #download_CN_EN_ArgosPackage()
         
         if cacheAdapter == None: 
@@ -80,6 +84,9 @@ class ProjectsDatasetManager:
         else:
             self.cacheAdapter = cacheAdapter
 
+    def resetCursor(self):
+        self.cursor = ProjectsDatasetManager.usersCollection.find()
+    
     def clearData(self):
         self.data.clear()
         self.preprocessed = False
@@ -108,10 +115,10 @@ class ProjectsDatasetManager:
         # will return a dictionary, where keys are users ids and values are lists of projects ids, each user has contributed to
         i = 0
         count = self.userNumber
-        cursor = ProjectsDatasetManager.usersCollection.find().skip(len(self.ignoredUsers))
+        #cursor = ProjectsDatasetManager.usersCollection.find().skip(len(self.ignoredUsers))
         data = {}
 
-        for user in cursor:
+        for user in self.cursor: # cursor continues from the point, where it was left during the last time the method was called
             if count <= 0: break
             if self.ignoredUsers.includes(user["id"]):
                 #print(f"{user['id']} ignored")
@@ -214,7 +221,7 @@ class ProjectsDatasetManager:
 
         return tokens
 
-    def projectsDataPreprocessing(self, projects : array(dict), including_text : bool = False) -> array([{"tokens" : str, "tags" : list}]):
+    def projectsDataPreprocessing(self, projects : array(dict), includingText = False) -> array([{"tokens" : str, "tags" : list}]):
         # will take in an array of projects and prepare it to be consumed by the model
         # takes: array of projects (as dictionaries); returns: text data and tags for every project in array
         result = []
@@ -224,10 +231,12 @@ class ProjectsDatasetManager:
 
             tockens = self.textPreprocessing(joinedText)
             tags = [proj["id"], proj["name"], proj["language"]] + proj["topics"]# if proj["language"] else proj["topics"]
-            if including_text:
+
+            if includingText:
                 result.append({"text" : joinedText, "tokens" : tockens, "tags" : tags})
             else:
                 result.append({"tokens" : tockens, "tags" : tags})
+                
 
         return result
 
@@ -247,3 +256,23 @@ class ProjectsDatasetManager:
 
         self.preprocessed = True
         return data
+
+    def getTextOnly(self, _data)
+        result = {}
+        
+        if _data:
+            data = _data
+        elif self.data:
+            data = self.data
+        else:
+            return self.fromCache()
+
+        for user_id, projs in data.items():
+            #print(type(array(userProjs)))
+            result[user_id] = []
+
+            for proj in projects:
+                joinedText = " ".join([proj["name"], proj["description"]])
+                result[user_id].append(joinedText)
+
+        return result

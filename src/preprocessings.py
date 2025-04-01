@@ -117,7 +117,7 @@ with open("/home/trukhinmaksim/src/logs/ignoreUsers.json", encoding = "utf-8") a
 
 startPoint = time()
 
-for i in range(40, 60): #60, 70
+for i in range(60, 80): #60, 70
     manager.fromDB()
     manager.preprocess()
 
