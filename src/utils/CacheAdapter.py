@@ -1,5 +1,6 @@
 import os
 import json
+from itertools import islice
 
 PREPROCESSED_DATA_CACHE_PATH = "/home/trukhinmaksim/src/data/cache_31-03-25"
 
@@ -63,21 +64,32 @@ class JSONMultiFileAdapter(JSONAdapter):
         super().__init__("")
         self.baseName = baseName
 
-    def load(self, amount = 25, state = {"counter" : 0, "tempStorage" : list()}): # state being mutable type must persist between method calls
+    def load(self, amount = 25, state = {"counter" : 0, "tempStorage" : dict()}): # state being mutable type must persist between method calls
         # method, that returns specific amount of data per time
         while len(state["tempStorage"]) < amount:
             # load data from the files
             try:
                 self.collectionName = self.baseName.format(state["counter"])
-                state["tempStorage"].extend(super().load()) # load the entire file content and place it to the temporal storage
+                print(f"reading {self.collectionName}")
+                state["tempStorage"].update(super().load()) # load the entire file content and place it to the temporal storage
+                
                 state["counter"] += 1
             except EXP_END_OF_DATA:
                 break
 
-        result = state["tempStorage"]
-        state["tempStorage"] = state["tempStorage"]
+        if len(state["tempStorage"]) > amount:
+            # return dictionary with specified amount of data and save the rest
+            result = dict(islice(state["tempStorage"].items(), amount))
 
-        return result
+            for key in result.keys():
+                del state["tempStorage"][key]
+
+            return result
+        else:
+            # just return loaded data as it is
+            result = dict(state["tempStorage"])
+            state["tempStorage"].clear()
+            return result
 
     def save(self, data, state = {"counter" : 0}):
         # will write the data into the file, that is pointed by the state "counter"
