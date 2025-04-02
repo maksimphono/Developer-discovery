@@ -34,7 +34,7 @@ class JSONAdapter(CacheAdapter):
             # take the first file from the directory:
             fileName = next(os.walk(JSONAdapter.PREPROCESSED_DATA_CACHE_PATH))[2][0]
 
-        print(fileName)
+        #print(fileName)
 
         try:
             with open(os.path.join(JSONAdapter.PREPROCESSED_DATA_CACHE_PATH, fileName), encoding = "utf-8") as file:
@@ -57,17 +57,32 @@ class JSONAdapter(CacheAdapter):
 
 class JSONMultiFileAdapter(JSONAdapter):
     # adapter, that is capable of reading certain amount of items from multiple files
+    # basically, it must read files one by one, storing data it read to the temporary storage, then as amount of data exceeds storage capacity -> return it within load method and try to fill the storage again
 
     def __init__(self, baseName):
         super().__init__("")
         self.baseName = baseName
+        self.tempStorage = []
+        #self.loadCounter = 0
+        #self.saveCounter = 0
 
 
-    def load(self, amount = float("inf")):
-        # generator function, must be used with "for"
-        tempStorage = []
-        i = 0
-        
+    def load(self, amount = 25, state = {"counter" : 0, "tempStorage" : list()}): # state being mutable type must persist between method calls
+        # method, that returns specific amount of data per time
+        while len(state["tempStorage"]) < amount:
+            # load some data from the files
+            try:
+                self.collectionName = self.baseName.format(self.loadCounter[0])
+                self.tempStorage.extend(super().load()) # load the entire file content and place it to the temporal storage
+                self.loadCounter[0] += 1
+            except EXP_END_OF_DATA:
+                break
+
+        result = self.tempStorage[:amount]
+        self.tempStorage = tempStorage[amount:]
+
+        return result
+"""
         while True:
             try:
                 while len(tempStorage) >= amount:
@@ -82,7 +97,7 @@ class JSONMultiFileAdapter(JSONAdapter):
                 break
 
         yield tempStorage
-
+"""
     def save(self):
         # that adapter will only be used to parse data from the files
         pass
