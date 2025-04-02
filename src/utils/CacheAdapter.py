@@ -62,15 +62,11 @@ class JSONMultiFileAdapter(JSONAdapter):
     def __init__(self, baseName):
         super().__init__("")
         self.baseName = baseName
-        self.tempStorage = []
-        #self.loadCounter = 0
-        #self.saveCounter = 0
-
 
     def load(self, amount = 25, state = {"counter" : 0, "tempStorage" : list()}): # state being mutable type must persist between method calls
         # method, that returns specific amount of data per time
         while len(state["tempStorage"]) < amount:
-            # load some data from the files
+            # load data from the files
             try:
                 self.collectionName = self.baseName.format(state["counter"])
                 state["tempStorage"].extend(super().load()) # load the entire file content and place it to the temporal storage
@@ -82,25 +78,13 @@ class JSONMultiFileAdapter(JSONAdapter):
         state["tempStorage"] = state["tempStorage"]
 
         return result
-"""
-        while True:
-            try:
-                while len(tempStorage) >= amount:
-                    yield tempStorage[:amount]
-                    tempStorage = tempStorage[amount:]
 
-                self.collectionName = self.baseName.format(i)
-                tempStorage.extend(super().load())
-
-                i += 1
-            except EXP_END_OF_DATA:
-                break
-
-        yield tempStorage
-"""
-    def save(self):
-        # that adapter will only be used to parse data from the files
-        pass
+    def save(self, data, state = {"counter" : 0}):
+        # will write the data into the file, that is pointed by the state "counter"
+        # note, that the moethod doesn't care about amount of items being saved, it just saves the entire object into a file and moves the counter forward
+        self.collectionName = self.baseName.format(state["counter"])
+        super().save(data)
+        state["counter"] += 1
 
 class DBAdapter(CacheAdapter):
     def __init__(self, cacheCollection, ignoreList):
