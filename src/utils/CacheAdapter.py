@@ -62,7 +62,7 @@ class JSONMultiFileAdapter(JSONAdapter):
 
     def __init__(self, baseName):
         super().__init__("")
-        self.baseName = baseName
+        self.baseName = baseName # 'baseName' must be a string, containing "{0}", so "str.format(n)" function can be applied
 
     def load(self, amount = 25, state = {"counter" : 0, "tempStorage" : dict()}): # state being mutable type must persist between method calls
         # method, that returns specific amount of data per time
