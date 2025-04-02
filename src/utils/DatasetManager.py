@@ -100,6 +100,7 @@ class ProjectsDatasetManager:
             self.ignoredUsers.extend(users_ids)
     
     def fromCache(self):
+        # loads excatly 'self.userNumber' users from cache per call
         self.data = self.cacheAdapter.load()
 
         # it is assumed, that cache only contains already preprocessed data
@@ -107,6 +108,7 @@ class ProjectsDatasetManager:
         return self.data
 
     def fromDB(self):
+        # loads excatly 'self.userNumber' users from database per call
         self.data = self.getProjectsDataForUsers()
         self.preprocessed = False # assume, that database contains unprocessed data
         return self.data

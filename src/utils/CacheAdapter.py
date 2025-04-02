@@ -67,7 +67,7 @@ class JSONMultiFileAdapter(JSONAdapter):
         # generator function, must be used with "for"
         tempStorage = []
         i = 0
-        
+
         while True:
             try:
                 while len(tempStorage) >= amount:

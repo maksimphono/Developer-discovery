@@ -73,7 +73,7 @@ class ProjectsDatasetManager:
         self.data = None
         self.preprocessed = False
         self.ignoredUsers = IgnoreList()
-        if ProjectsDatasetManager.usersCollection:
+        if ProjectsDatasetManager.usersCollection != None:
             self.cursor = ProjectsDatasetManager.usersCollection.find()
         else:
             self.cursor = None # not specified, then the cursor will be set later manually
@@ -100,6 +100,7 @@ class ProjectsDatasetManager:
             self.ignoredUsers.extend(users_ids)
     
     def fromCache(self):
+        # loads excatly 'self.userNumber' users from cache per call
         self.data = self.cacheAdapter.load()
 
         # it is assumed, that cache only contains already preprocessed data
@@ -107,6 +108,7 @@ class ProjectsDatasetManager:
         return self.data
 
     def fromDB(self):
+        # loads excatly 'self.userNumber' users from database per call
         self.data = self.getProjectsDataForUsers()
         self.preprocessed = False # assume, that database contains unprocessed data
         return self.data
@@ -257,9 +259,9 @@ class ProjectsDatasetManager:
         self.preprocessed = True
         return data
 
-    def getTextOnly(self, _data)
+    def getTextOnly(self, _data : dict | None = None):
         result = {}
-        
+
         if _data:
             data = _data
         elif self.data:
@@ -267,11 +269,12 @@ class ProjectsDatasetManager:
         else:
             return self.fromCache()
 
-        for user_id, projs in data.items():
+        for user_id, projects in data.items():
             #print(type(array(userProjs)))
             result[user_id] = []
 
             for proj in projects:
+                #print(proj)
                 joinedText = " ".join([proj["name"], proj["description"]])
                 result[user_id].append(joinedText)
 
