@@ -101,9 +101,9 @@ class ProjectsDatasetManager:
     
     def fromCache(self):
         # loads excatly 'self.userNumber' users from cache per call
-        self.data = self.cacheAdapter.load()
+        self.data = self.cacheAdapter.load(self.userNumber)
 
-        # it is assumed, that cache only contains already preprocessed data
+        # it is assumed, that cache only contains already preprocessed data, so no need to perprocess or filter data, all done!
         self.preprocessed = True
         return self.data
 
