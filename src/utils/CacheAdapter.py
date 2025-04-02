@@ -34,7 +34,7 @@ class JSONAdapter(CacheAdapter):
             # take the first file from the directory:
             fileName = next(os.walk(JSONAdapter.PREPROCESSED_DATA_CACHE_PATH))[2][0]
 
-        print(fileName)
+        #print(fileName)
 
         try:
             with open(os.path.join(JSONAdapter.PREPROCESSED_DATA_CACHE_PATH, fileName), encoding = "utf-8") as file:
