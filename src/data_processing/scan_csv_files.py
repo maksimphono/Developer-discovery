@@ -1,14 +1,18 @@
-from consts import *
+try:
+    from consts import *
+except ModuleNotFoundError:
+    # codee is used by a side process (not run as a main process)
+    from src.data_processing.consts import *
 import os
 import json
 from copy import deepcopy
 import re
 from pymongo import MongoClient
 
-SCANNED_FILES_LIST_PATH = "/home/trukhinmaksim/Maksim/学习/Thesis/code/docker/container/src/data_processing/read_files_list.txt"
-USER_PROFILES_PATH = "/home/trukhinmaksim/Maksim/学习/Thesis/data/user_profiles"
-USER_PROJ_PARTICIPATE_PATH = "/home/trukhinmaksim/Maksim/学习/Thesis/data/user_proj_participate"
-OUTPUT_DIRECTORY = "/home/trukhinmaksim/Maksim/学习/Thesis/data/output"
+SCANNED_FILES_LIST_PATH = "/home/trukhinmaksim/src/src/data_processing/read_files_list.txt"
+USER_PROFILES_PATH = "/home/trukhinmaksim/src/data/user_profiles"
+USER_PROJ_PARTICIPATE_PATH = "/home/trukhinmaksim/src/data/user_proj_participate"
+OUTPUT_DIRECTORY = "/home/trukhinmaksim/src/data/output"
 
 MY_DB_LINK = "mongodb://localhost:27020/"
 USER_PROFILES_IGNORE_LIST = []
@@ -88,9 +92,9 @@ class Stats:
         self.stats["total_proj_number"] += len(projects_db)
 
     def logFinal(self):
-        self.log(f"\nTotal users number scanned: {self.stats["total_user_number"]}")
-        self.log(f"Total projects number scanned: {self.stats["total_proj_number"]}")
-        self.log(f"\tScanned CSV files:\n\t\t{str(ScannedFilesManager.scannedFilesNames)}")
+        self.log(f'\nTotal users number scanned: {self.stats["total_user_number"]}')
+        self.log(f'Total projects number scanned: {self.stats["total_proj_number"]}')
+        self.log(f'\tScanned CSV files:\n\t\t{str(ScannedFilesManager.scannedFilesNames)}')
         self.log("END")
         self.flash()
 
@@ -259,10 +263,39 @@ PRIORITY_CSV_FILES = [
     "user_profiles_github_afollestad_material-dialogs.csv"
 ]
 
-def scanUsersFromOneCSV():
+def scanUsersFromOneCSV(priorityFiles = PRIORITY_CSV_FILES):
     # will scan all users from a single CSV file in order to update 'users_db'
-    filesNames = readCSVDatabase(PRIORITY_CSV_FILES, 1)
+    filesNames = readCSVDatabase(priorityFiles, 1)
     readJSONDatabase(map(lambda fn: fn.replace(".csv", ".json"), filesNames))
+
+
+class UsersCollection:
+    def __init__(self, totalAmount, priorityFiles):
+        # will scan at least totalAmount users (not exactly) because each file contains different amount of users
+        ScannedFilesManager.get()
+        self.innerUserCounter = 0
+        self.totalAmount = totalAmount
+        self.priorityFiles = priorityFiles
+
+
+# TODO: change: must scan files first and then start yielding
+    def find(self):
+        # will yield one user at a time
+
+        while len(users_db):
+            user_id = next(users_db.keys())
+            yield users_db[user_id]
+            del users_db[user_id] # delete the user from temporal db
+
+        if self.innerUserCounter < self.totalAmount:
+            # once the user_db is empty and amount of scanned users hasn't reach thee limit -> scan more users
+            scanUsersFromOneCSV(self.priorityFiles)
+            self.innerUserCounter += len(users_db)
+        else:
+            # files scanned
+            ScannedFilesManager.update()
+        
+
 
 def getScannedFiles():
     with open(SCANNED_FILES_LIST_PATH, encoding="utf-8") as file:
@@ -299,4 +332,4 @@ def main():
     stats.logFinal()
 
 
-main()
+#main()
