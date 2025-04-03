@@ -108,8 +108,8 @@ class ScannedFilesManager:
     def update(cls):
         # writes all scanned files names from the array to the file
         with open(SCANNED_FILES_LIST_PATH, "w", encoding="utf-8") as file:
-            for filePath in cls.scannedFilesNames:
-                print(filePath, file = file)
+            for fileName in cls.scannedFilesNames:
+                print(fileName, file = file)
 
     @classmethod
     def add(cls, name):
@@ -178,7 +178,7 @@ def readCSVDatabase(priorityFiles = [], limit = 2) -> str:
     # read data about users from the the CSV file
 
     def readFile(root, fileName):
-        nonlocal count, filesNames
+        nonlocal filesNames
         print("Reading file ", fileName)
         filesNames.append(fileName)
         evaluationProjectObj = ProjectDataCreator.createEvaluationProject(fileName)
@@ -193,13 +193,13 @@ def readCSVDatabase(priorityFiles = [], limit = 2) -> str:
 
         evaluation_projects_db[evaluationProjectObj["proj_id"]] = evaluationProjectObj
         ScannedFilesManager.add(fileName)
-        count += 1
 
     # read priority files first 
     for fileName in priorityFiles:
         if count >= limit: break
         if fileName not in USER_PROFILES_IGNORE_LIST and fileName not in ScannedFilesManager.scannedFilesNames:
             readFile(USER_PROFILES_PATH, fileName)
+            count += 1
 
     # read other files
     for root, dirs, files in os.walk(USER_PROFILES_PATH):
@@ -207,6 +207,7 @@ def readCSVDatabase(priorityFiles = [], limit = 2) -> str:
             if count >= limit: break
             if fileName not in USER_PROFILES_IGNORE_LIST and fileName not in ScannedFilesManager.scannedFilesNames:
                 readFile(root, fileName)
+                count += 1
 
         # don't need to go through subdirectories
     return filesNames
@@ -251,6 +252,17 @@ def saveDatabases():
     projects_db.clear()
     evaluation_projects_db.clear()
 
+PRIORITY_CSV_FILES = [
+    "user_profiles_github_23mf_react-native-translucent-modal.csv",
+    "user_profiles_github_2017398956_react-native-textinput-maxlength-fixed.csv",
+    "user_profiles_github_a7ul_react-native-exception-handler.csv",
+    "user_profiles_github_afollestad_material-dialogs.csv"
+]
+
+def scanUsersFromOneCSV():
+    # will scan all users from a single CSV file in order to update 'users_db'
+    filesNames = readCSVDatabase(PRIORITY_CSV_FILES, 1)
+    readJSONDatabase(map(lambda fn: fn.replace(".csv", ".json"), filesNames))
 
 def getScannedFiles():
     with open(SCANNED_FILES_LIST_PATH, encoding="utf-8") as file:
