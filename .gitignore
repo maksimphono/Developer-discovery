@@ -8,3 +8,4 @@ data/*
 *-checkpoint.ipynb
 logs/*.json
 logs/ignoreUsers.json
+src/utils/__pycache__

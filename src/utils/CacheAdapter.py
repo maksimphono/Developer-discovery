@@ -70,11 +70,15 @@ class JSONMultiFileAdapter(JSONAdapter):
             # load data from the files
             try:
                 self.collectionName = self.baseName.format(state["counter"])
-                print(f"reading {self.collectionName}")
+                #print(f"reading {self.collectionName}")
                 state["tempStorage"].update(super().load()) # load the entire file content and place it to the temporal storage
                 
                 state["counter"] += 1
             except EXP_END_OF_DATA:
+                if len(state["tempStorage"]) == 0:
+                    # if all files are read and temporary storage is empty -> no more data left to return
+                    state["counter"] = 0 # reset counter, get ready for reading from the first file again
+                    raise EXP_END_OF_DATA # no more data left to read
                 break
 
         if len(state["tempStorage"]) > amount:

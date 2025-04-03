@@ -76,7 +76,8 @@ class ProjectsDatasetManager:
         if ProjectsDatasetManager.usersCollection != None:
             self.cursor = ProjectsDatasetManager.usersCollection.find()
         else:
-            self.cursor = None # not specified, then the cursor will be set later manually
+            # not specified, then the cursor will be set later manually
+            self.cursor = None 
         #download_CN_EN_ArgosPackage()
         
         if cacheAdapter == None: 
@@ -232,7 +233,8 @@ class ProjectsDatasetManager:
             joinedText = " ".join([proj["name"], proj["description"]])
 
             tockens = self.textPreprocessing(joinedText)
-            tags = [proj["id"], proj["name"], proj["language"]] + proj["topics"]# if proj["language"] else proj["topics"]
+            # only meaningfull tags will be saved, no empty strings!
+            tags = list(filter(lambda n: (n != ""), [proj["id"], proj["name"], proj["language"]] + proj["topics"]))# if proj["language"] else proj["topics"]
 
             if includingText:
                 result.append({"text" : joinedText, "tokens" : tockens, "tags" : tags})
