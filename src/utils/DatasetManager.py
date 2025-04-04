@@ -18,6 +18,7 @@ from langdetect import detect
 import requests
 from json import dumps
 from random import choice
+import textstat
 
 from src.utils.CacheAdapter import JSONAdapter
 from src.data_processing.collect_projects_data import collectOneProjectData, EXP_NOT_IN_DB
@@ -74,6 +75,8 @@ class ProjectsDatasetManager:
         self.data = None
         self.preprocessed = False
         self.ignoredUsers = IgnoreList()
+        self.readability = {"flesch" : 13, "dale_chall" : 11}
+        self.readabilityCheckEnabled = True
         if ProjectsDatasetManager.usersCollection != None:
             self.cursor = ProjectsDatasetManager.usersCollection.find()
         else:
@@ -149,7 +152,13 @@ class ProjectsDatasetManager:
                     #print("Found project data")
                     
                     if self.validate(projectData):
-                        projects.append(projectData)
+                        projectData["description"] = self.translateText(projectData["description"])
+
+                        if self.readabilityCheckEnabled:
+                            if self.checkTextReadability(projectData["description"]):
+                                projects.append(projectData)
+                        else:
+                            projects.append(projectData)
         
                 if len(projects):
                     # if user has at least one project he contributed to
@@ -208,13 +217,16 @@ class ProjectsDatasetManager:
             raise exp
         """
 
+    def checkTextReadability(self, text):
+        return (textstat.flesch_reading_ease(text) >= self.readability["flesch"] and textstat.dale_chall_readability_score(text) >= self.readability["dale_chall"])
+
     def textPreprocessing(self, text):
         # Initialize tools
         stop_words = set(stopwords.words("english") + ["etc"])
         lemmatizer = WordNetLemmatizer()
 
         # Translate:
-        text = self.translateText(text, 3)
+        #text = self.translateText(text, 3)
         # Remove unicode:
         text = text.encode("ascii", "ignore").decode()
         # Process camel case:
