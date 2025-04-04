@@ -225,6 +225,8 @@ class ProjectsDatasetManager:
         stop_words = set(stopwords.words("english") + ["etc"])
         lemmatizer = WordNetLemmatizer()
 
+# TODO: remove links and urls
+
         # Translate:
         #text = self.translateText(text, 3)
         # Remove unicode:
@@ -233,6 +235,8 @@ class ProjectsDatasetManager:
         #text = processCamelCase(text)
         # Lower the text:
         text = text.lower()
+        # remove links and urls:
+        text = re.sub(r"http[^\s]*", "", text)
         # Remove punctuation:
         text = text.translate(str.maketrans(string.punctuation, " " * len(string.punctuation)))
         # Remove stop-words:
