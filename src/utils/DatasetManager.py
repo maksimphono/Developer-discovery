@@ -225,8 +225,6 @@ class ProjectsDatasetManager:
         stop_words = set(stopwords.words("english") + ["etc"])
         lemmatizer = WordNetLemmatizer()
 
-# TODO: remove links and urls
-
         # Translate:
         #text = self.translateText(text, 3)
         # Remove unicode:
