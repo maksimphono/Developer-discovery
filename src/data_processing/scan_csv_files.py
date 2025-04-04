@@ -293,7 +293,6 @@ class UsersCollection:
 
         while True:
             for user in users_db.values():
-                print(f"Yielding {user['id']}")
                 yield deepcopy(user)
 
             users_db.clear()
@@ -302,7 +301,6 @@ class UsersCollection:
                 # once the user_db is empty and amount of scanned users hasn't reach thee limit -> scan more users
                 scanUsersFromOneCSV(self.priorityFiles)
                 self.innerUserCounter += len(users_db)
-                print([*users_db.keys()])
             else:
                 # all files scanned
                 print("scanned")

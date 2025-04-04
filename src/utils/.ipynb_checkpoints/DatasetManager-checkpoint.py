@@ -122,8 +122,8 @@ class ProjectsDatasetManager:
         #cursor = ProjectsDatasetManager.usersCollection.find().skip(len(self.ignoredUsers))
         data = {}
 
-        for user in self.cursor: # cursor continues from the point, where it was left during the last time the method was called
-            if count <= 0: break
+        while count > 0:
+            user = next(self.cursor) # cursor continues from the point, where it was left during the last time the method was called
             if self.ignoredUsers.includes(user["id"]):
                 #print(f"{user['id']} ignored")
                 continue # if that user must be ignored, just skip to the next one
@@ -153,7 +153,7 @@ class ProjectsDatasetManager:
         
                 if len(projects):
                     # if user has at least one project he contributed to
-                    
+                    print(f"Scanning {user['id']}")
                     data[user["id"]] = deepcopy(projects)
                     count -= 1
 
