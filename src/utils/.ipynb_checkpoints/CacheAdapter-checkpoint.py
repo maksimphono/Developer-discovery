@@ -1,7 +1,8 @@
 import os
 import json
+from itertools import islice
 
-PREPROCESSED_DATA_CACHE_PATH = "/home/trukhinmaksim/src/data/cache_31-03-25"
+PREPROCESSED_DATA_CACHE_PATH = "/home/trukhinmaksim/src/data/cache_02-04-25"
 
 class EXP_END_OF_DATA(Exception):
     pass
@@ -61,46 +62,45 @@ class JSONMultiFileAdapter(JSONAdapter):
 
     def __init__(self, baseName):
         super().__init__("")
-        self.baseName = baseName
-        self.tempStorage = []
-        #self.loadCounter = 0
-        #self.saveCounter = 0
+        self.baseName = baseName # 'baseName' must be a string, containing "{0}", so "str.format(n)" function can be applied
 
-
-    def load(self, amount = 25, state = {"counter" : 0, "tempStorage" : list()}): # state being mutable type must persist between method calls
+    def load(self, amount = 25, state = {"counter" : 0, "tempStorage" : dict()}): # state being mutable type must persist between method calls
         # method, that returns specific amount of data per time
         while len(state["tempStorage"]) < amount:
-            # load some data from the files
+            # load data from the files
             try:
-                self.collectionName = self.baseName.format(self.loadCounter[0])
-                self.tempStorage.extend(super().load()) # load the entire file content and place it to the temporal storage
-                self.loadCounter[0] += 1
+                self.collectionName = self.baseName.format(state["counter"])
+                #print(f"reading {self.collectionName}")
+                state["tempStorage"].update(super().load()) # load the entire file content and place it to the temporal storage
+                
+                state["counter"] += 1
             except EXP_END_OF_DATA:
+                if len(state["tempStorage"]) == 0:
+                    # if all files are read and temporary storage is empty -> no more data left to return
+                    state["counter"] = 0 # reset counter, get ready for reading from the first file again
+                    raise EXP_END_OF_DATA # no more data left to read
                 break
 
-        result = self.tempStorage[:amount]
-        self.tempStorage = tempStorage[amount:]
+        if len(state["tempStorage"]) > amount:
+            # return dictionary with specified amount of data and save the rest
+            result = dict(islice(state["tempStorage"].items(), amount))
 
-        return result
-"""
-        while True:
-            try:
-                while len(tempStorage) >= amount:
-                    yield tempStorage[:amount]
-                    tempStorage = tempStorage[amount:]
+            for key in result.keys():
+                del state["tempStorage"][key]
 
-                self.collectionName = self.baseName.format(i)
-                tempStorage.extend(super().load())
+            return result
+        else:
+            # just return loaded data as it is
+            result = dict(state["tempStorage"])
+            state["tempStorage"].clear()
+            return result
 
-                i += 1
-            except EXP_END_OF_DATA:
-                break
-
-        yield tempStorage
-"""
-    def save(self):
-        # that adapter will only be used to parse data from the files
-        pass
+    def save(self, data, state = {"counter" : 0}):
+        # will write the data into the file, that is pointed by the state "counter"
+        # note, that the moethod doesn't care about amount of items being saved, it just saves the entire object into a file and moves the counter forward
+        self.collectionName = self.baseName.format(state["counter"])
+        super().save(data)
+        state["counter"] += 1
 
 class DBAdapter(CacheAdapter):
     def __init__(self, cacheCollection, ignoreList):

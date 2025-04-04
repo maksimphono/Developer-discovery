@@ -2,7 +2,7 @@ import os
 import json
 from itertools import islice
 
-PREPROCESSED_DATA_CACHE_PATH = "/home/trukhinmaksim/src/data/cache_31-03-25"
+PREPROCESSED_DATA_CACHE_PATH = "/home/trukhinmaksim/src/data/cache_02-04-25"
 
 class EXP_END_OF_DATA(Exception):
     pass
