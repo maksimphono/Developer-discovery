@@ -27,7 +27,8 @@ def collectOneProjectData(proj_id):
     processData = processStarsNum # lambda obj: obj
     rawData = collectionProjects.find_one({"proj_id" : proj_id}, {"name" : True, "description" : True, "language" : True, "topics" : True, "stargazers_count" : True, "_id" : False})
 
-    if rawData == None: 
+    if rawData == None:
+        #print(proj_id)
         raise EXP_NOT_IN_DB
 
     colectedData = processData(dict(rawData))

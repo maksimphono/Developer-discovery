@@ -102,7 +102,7 @@ class Stats:
 class ScannedFilesManager:
     scannedFilesNames = []
     scannedInSession = [] # used as buffer, every time files are scanned, it keep track of them, then saves the list and get cleared
-    updateFrequency = 5 # will write list of scanned files names into the file every Nth file (default 5)
+    updateFrequency = 1 # will write list of scanned files names into the file every Nth file (default 5)
 
     @classmethod
     def get(cls) -> list:
@@ -288,12 +288,12 @@ class UsersCollection:
         scanUsersFromOneCSV(self.priorityFiles)
         self.innerUserCounter = len(users_db)
 
-
     def find(self):
         # will yield one user at a time
 
         while True:
             for user in users_db.values():
+                print(f"Yielding {user['id']}")
                 yield deepcopy(user)
 
             users_db.clear()
@@ -302,6 +302,7 @@ class UsersCollection:
                 # once the user_db is empty and amount of scanned users hasn't reach thee limit -> scan more users
                 scanUsersFromOneCSV(self.priorityFiles)
                 self.innerUserCounter += len(users_db)
+                print([*users_db.keys()])
             else:
                 # all files scanned
                 print("scanned")

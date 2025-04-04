@@ -20,6 +20,7 @@ from json import dumps
 from random import choice
 
 from src.utils.CacheAdapter import JSONAdapter
+from src.data_processing.collect_projects_data import collectOneProjectData, EXP_NOT_IN_DB
 
 def downloadArgosLangPackages(langList = ["es", "pt", "zh", "zt", "ru", "de", "ja", "ko"]):
     argostranslate.package.update_package_index()
@@ -76,7 +77,8 @@ class ProjectsDatasetManager:
         if ProjectsDatasetManager.usersCollection != None:
             self.cursor = ProjectsDatasetManager.usersCollection.find()
         else:
-            self.cursor = None # not specified, then the cursor will be set later manually
+            # not specified, then the cursor will be set later manually
+            self.cursor = None 
         #download_CN_EN_ArgosPackage()
         
         if cacheAdapter == None: 
@@ -101,9 +103,9 @@ class ProjectsDatasetManager:
     
     def fromCache(self):
         # loads excatly 'self.userNumber' users from cache per call
-        self.data = self.cacheAdapter.load()
+        self.data = self.cacheAdapter.load(self.userNumber)
 
-        # it is assumed, that cache only contains already preprocessed data
+        # it is assumed, that cache only contains already preprocessed data, so no need to perprocess or filter data, all done!
         self.preprocessed = True
         return self.data
 
@@ -126,19 +128,32 @@ class ProjectsDatasetManager:
                 #print(f"{user['id']} ignored")
                 continue # if that user must be ignored, just skip to the next one
             else:
+                #print(f"Trying to scan {user['id']}")
+                
                 projectsIDList = user["projects"]
 
                 projects = []
 
                 for proj_id in projectsIDList:
-                    projectData = ProjectsDatasetManager.projectsCollection.find_one({"id" : proj_id}, {"_id" : False})
+                    #print(f"Searching project data {proj_id}")
+                    try:
+                        projectData = collectOneProjectData(proj_id)
+                    except Exception as exp:
+                        if exp is EXP_NOT_IN_DB: 
+                            #print(f"{proj_id} not in db")
+                            continue # if the project data wasn't found , just skip
+                        else:
+                            raise exp
 
+                    #projectData = ProjectsDatasetManager.projectsCollection.find_one({"proj_id" : proj_id}, {"_id" : False})
+                    #print("Found project data")
+                    
                     if self.validate(projectData):
                         projects.append(projectData)
         
                 if len(projects):
                     # if user has at least one project he contributed to
-                    print(f"Scanning user: {user['id']}")
+                    
                     data[user["id"]] = deepcopy(projects)
                     count -= 1
 
@@ -232,7 +247,8 @@ class ProjectsDatasetManager:
             joinedText = " ".join([proj["name"], proj["description"]])
 
             tockens = self.textPreprocessing(joinedText)
-            tags = [proj["id"], proj["name"], proj["language"]] + proj["topics"]# if proj["language"] else proj["topics"]
+            # only meaningfull tags will be saved, no empty strings!
+            tags = list(filter(lambda n: (n != ""), [proj["id"], proj["name"], proj["language"]] + proj["topics"]))# if proj["language"] else proj["topics"]
 
             if includingText:
                 result.append({"text" : joinedText, "tokens" : tockens, "tags" : tags})

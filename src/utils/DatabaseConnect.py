@@ -27,7 +27,6 @@ class DatabaseConnect:
         def getCollection(cls, collectionName):
             return cls.client[collectionName]
 
-
     class mini_database(Base):
         @classmethod
         def projects(cls):
@@ -41,3 +40,14 @@ class DatabaseConnect:
         @classmethod
         def cache(cls):
             return cls.connect('mini_database')['cache']
+
+    class developer_discovery(Base):
+        @classmethod
+        def proj_info(cls):
+            return cls.connect('developer_discovery')['proj_info']
+
+class WL_DatabaseConnect(DatabaseConnect):
+    class mini_database:
+        pass
+
+    
