@@ -101,6 +101,9 @@ class Stats:
 
 class ScannedFilesManager:
     scannedFilesNames = []
+    scannedInSession = [] # used as buffer, every time files are scanned, it keep track of them, then saves the list and get cleared
+    updateFrequency = 5 # will write list of scanned files names into the file every Nth file (default 5)
+
     @classmethod
     def get(cls) -> list:
         with open(SCANNED_FILES_LIST_PATH, encoding="utf-8") as file:
@@ -111,13 +114,19 @@ class ScannedFilesManager:
     @classmethod
     def update(cls):
         # writes all scanned files names from the array to the file
-        with open(SCANNED_FILES_LIST_PATH, "w", encoding="utf-8") as file:
-            for fileName in cls.scannedFilesNames:
+        with open(SCANNED_FILES_LIST_PATH, "a+", encoding="utf-8") as file:
+            for fileName in cls.scannedInSession:
                 print(fileName, file = file)
+
+            cls.scannedInSession.clear()
 
     @classmethod
     def add(cls, name):
         cls.scannedFilesNames.append(name)
+        cls.scannedInSession.append(name)
+
+        if len(cls.scannedInSession) == cls.updateFrequency:
+            cls.update()
 
 
 class UserDataCreator:
@@ -246,6 +255,7 @@ def readJSONDatabase(filesNamesToRead):
                         if id not in projects_db:
                             projects_db[id] = deepcopy(projData)
 
+    return users_db
 
 def saveDatabases():
     users_db.save()
@@ -273,27 +283,30 @@ class UsersCollection:
     def __init__(self, totalAmount, priorityFiles):
         # will scan at least totalAmount users (not exactly) because each file contains different amount of users
         ScannedFilesManager.get()
-        self.innerUserCounter = 0
         self.totalAmount = totalAmount
         self.priorityFiles = priorityFiles
+        scanUsersFromOneCSV(self.priorityFiles)
+        self.innerUserCounter = len(users_db)
 
 
-# TODO: change: must scan files first and then start yielding
     def find(self):
         # will yield one user at a time
 
-        while len(users_db):
-            user_id = next(users_db.keys())
-            yield users_db[user_id]
-            del users_db[user_id] # delete the user from temporal db
+        while True:
+            for user in users_db.values():
+                yield deepcopy(user)
 
-        if self.innerUserCounter < self.totalAmount:
-            # once the user_db is empty and amount of scanned users hasn't reach thee limit -> scan more users
-            scanUsersFromOneCSV(self.priorityFiles)
-            self.innerUserCounter += len(users_db)
-        else:
-            # files scanned
-            ScannedFilesManager.update()
+            users_db.clear()
+
+            if self.innerUserCounter < self.totalAmount:
+                # once the user_db is empty and amount of scanned users hasn't reach thee limit -> scan more users
+                scanUsersFromOneCSV(self.priorityFiles)
+                self.innerUserCounter += len(users_db)
+            else:
+                # all files scanned
+                print("scanned")
+                ScannedFilesManager.update()
+                break
         
 
 
