@@ -60,9 +60,10 @@ class JSONMultiFileAdapter(JSONAdapter):
     # adapter, that is capable of reading certain amount of items from multiple files
     # basically, it must read files one by one, storing data it read to the temporary storage, then as amount of data exceeds storage capacity -> return it within load method and try to fill the storage again
 
-    def __init__(self, baseName):
+    def __init__(self, baseName, saveCounter = 0):
         super().__init__("")
         self.baseName = baseName # 'baseName' must be a string, containing "{0}", so "str.format(n)" function can be applied
+        self.saveCounter = saveCounter
 
     def load(self, amount = 25, state = {"counter" : 0, "tempStorage" : dict()}): # state being mutable type must persist between method calls
         # method, that returns specific amount of data per time
@@ -95,12 +96,12 @@ class JSONMultiFileAdapter(JSONAdapter):
             state["tempStorage"].clear()
             return result
 
-    def save(self, data, state = {"counter" : 0}):
+    def save(self, data):
         # will write the data into the file, that is pointed by the state "counter"
         # note, that the moethod doesn't care about amount of items being saved, it just saves the entire object into a file and moves the counter forward
-        self.collectionName = self.baseName.format(state["counter"])
+        self.collectionName = self.baseName.format(self.saveCounter)
         super().save(data)
-        state["counter"] += 1
+        self.saveCounter += 1
 
 class DBAdapter(CacheAdapter):
     def __init__(self, cacheCollection, ignoreList):

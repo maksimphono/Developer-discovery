@@ -15,6 +15,7 @@ import argostranslate.translate
 from random import random
 from time import sleep
 from langdetect import detect
+from langdetect.lang_detect_exception import LangDetectException
 import requests
 from json import dumps
 from random import choice
@@ -165,9 +166,9 @@ class ProjectsDatasetManager:
                                 projects.append(projectData)
                         else:
                             projects.append(projectData)
-        
+
                 if len(projects):
-                    # if user has at least one project he contributed to
+                    # if user has at least one project he contributed to, that passed validation check
                     print(f"Scanning {user['id']}")
                     data[user["id"]] = deepcopy(projects)
                     count -= 1
@@ -178,7 +179,10 @@ class ProjectsDatasetManager:
 
     def translateText(self, text, retry = 3, useServer = False):
         # will try to use Google Translate, but if any error occures, will use Argos offline translator
-        if text.isascii() or detect(text) == "en": return text # if the text is already english (either ascii or english with unicode emoji)
+        try:
+            if text.isascii() or detect(text) == "en": return text # if the text is already english (either ascii or english with unicode emoji)
+        except LangDetectException:
+            pass
 
         if useServer:
             translatorURL = choice(ProjectsDatasetManager.translatorServers)
@@ -254,14 +258,14 @@ class ProjectsDatasetManager:
         for proj in projects:
             joinedText = " ".join([proj["name"], proj["description"]])
 
-            tockens = self.textPreprocessing(joinedText)
+            tokens = self.textPreprocessing(joinedText)
             # only meaningfull tags will be saved, no empty strings!
             tags = list(filter(lambda n: (n != ""), [proj["id"], proj["name"], proj["language"]] + proj["topics"]))# if proj["language"] else proj["topics"]
 
             if includingText:
-                result.append({"text" : joinedText, "tokens" : tockens, "tags" : tags})
+                result.append({"text" : joinedText, "tokens" : tokens, "tags" : tags})
             else:
-                result.append({"tokens" : tockens, "tags" : tags})
+                result.append({"tokens" : tokens, "tags" : tags})
                 
 
         return result

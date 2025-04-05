@@ -18,14 +18,15 @@ db = client.developer_discovery
 collectionProjects = db.proj_info
 
 def processStarsNum(data : dict):
-    result = {**data, "stars" : data["stargazers_count"]}
+    result = {"id" : data["proj_id"], **data, "stars" : data["stargazers_count"]}
     del result["stargazers_count"]
+    del result["proj_id"]
     return result
 
 def collectOneProjectData(proj_id):
     #colectedData = {"name" : "", "description" : "", "language" : "", "topics" : list()}
     processData = processStarsNum # lambda obj: obj
-    rawData = collectionProjects.find_one({"proj_id" : proj_id}, {"name" : True, "description" : True, "language" : True, "topics" : True, "stargazers_count" : True, "_id" : False})
+    rawData = collectionProjects.find_one({"proj_id" : proj_id}, {"proj_id" : True, "name" : True, "description" : True, "language" : True, "topics" : True, "stargazers_count" : True, "_id" : False})
 
     if rawData == None:
         #print(proj_id)
