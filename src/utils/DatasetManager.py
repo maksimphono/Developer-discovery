@@ -19,6 +19,9 @@ import requests
 from json import dumps
 from random import choice
 import textstat
+import asyncio
+import nest_asyncio
+from googletrans import Translator
 
 from src.utils.CacheAdapter import JSONAdapter
 from src.data_processing.collect_projects_data import collectOneProjectData, EXP_NOT_IN_DB
@@ -77,6 +80,9 @@ class ProjectsDatasetManager:
         self.ignoredUsers = IgnoreList()
         self.readability = {"flesch" : 13, "dale_chall" : 11}
         self.readabilityCheckEnabled = True
+        self.stop_words = set(stopwords.words("english") + ["etc"])
+        self.lemmatizer = WordNetLemmatizer()
+
         if ProjectsDatasetManager.usersCollection != None:
             self.cursor = ProjectsDatasetManager.usersCollection.find()
         else:
@@ -183,10 +189,6 @@ class ProjectsDatasetManager:
             if response.ok:
                 return response.json()["translate"]
         else:
-            import asyncio
-            import nest_asyncio
-            from googletrans import Translator
-
             for i in range(retry):
                 try:
                     async def inner():
@@ -201,30 +203,22 @@ class ProjectsDatasetManager:
                     return asyncio.run(inner()).text
 
                 except Exception as exp:
-                    # assume, that the text is in Chinese and translate it using argos translator
+                    # retry translation
                     sleep(random() * 6)
                     print("Conection error, retrying")
                     continue
 
+        # failed translation, trying to use argos translator
         langCode = detect(text)[:2]
         if langCode not in ["es", "pt", "zh", "zt", "ru", "de", "ja", "ko"]: langCode = "zh" # If language is unknown, assuming it is Chinese
         print(f"Translation Faled after {retry} attempts, Using Argos for {text[:10]}...\nLanguage detected as: {langCode}")
         return argostranslate.translate.translate(text, langCode, "en")
-        """
-        if str(type(exp)) == "<class 'httpx.ConnectError'>":
-            return text
-        else:
-            raise exp
-        """
+
 
     def checkTextReadability(self, text):
         return (textstat.flesch_reading_ease(text) >= self.readability["flesch"] and textstat.dale_chall_readability_score(text) >= self.readability["dale_chall"])
 
     def textPreprocessing(self, text):
-        # Initialize tools
-        stop_words = set(stopwords.words("english") + ["etc"])
-        lemmatizer = WordNetLemmatizer()
-
         # Translate:
         #text = self.translateText(text, 3)
         # Remove unicode:
@@ -240,15 +234,15 @@ class ProjectsDatasetManager:
         # Remove stop-words:
         #text = re.sub("\s" + "|".join(stop_words) + "\s", " ", text)
         # Remove numbers:
-        text = re.sub(r"\d", " ", text)
+        text = re.sub(r"\d", "", text)
         # Remove new lines:
         text = re.sub(r"\n", " ", text)
         # Remove multiple spaces:
         text = re.sub("\s+", " ", text).strip()
-    
-        tokens = [word for word in word_tokenize(text) if word not in stop_words and len(word) > 1]  # Tokenize into words
-        
-        tokens = [lemmatizer.lemmatize(word) for word in tokens]  # Remove stopwords & lemmatize
+
+        tokens = [word for word in word_tokenize(text) if word not in self.stop_words and len(word) > 1]  # Tokenize into words
+
+        tokens = [self.lemmatizer.lemmatize(word) for word in tokens]  # Remove stopwords & lemmatize
 
         return tokens
 
