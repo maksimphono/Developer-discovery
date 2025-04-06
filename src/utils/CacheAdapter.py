@@ -60,40 +60,47 @@ class JSONMultiFileAdapter(JSONAdapter):
     # adapter, that is capable of reading certain amount of items from multiple files
     # basically, it must read files one by one, storing data it read to the temporary storage, then as amount of data exceeds storage capacity -> return it within load method and try to fill the storage again
 
-    def __init__(self, baseName, saveCounter = 0):
+    def __init__(self, baseName, saveCounter = 0, loadCounter = 0):
         super().__init__("")
         self.baseName = baseName # 'baseName' must be a string, containing "{0}", so "str.format(n)" function can be applied
         self.saveCounter = saveCounter
+        self.loadCounter = loadCounter
+        self.tempStorage = dict()
+
+    def reset(self):
+        self.saveCounter = 0
+        self.loadCounter = 0
+        self.tempStorage.clear()
 
     def load(self, amount = 25, state = {"counter" : 0, "tempStorage" : dict()}): # state being mutable type must persist between method calls
         # method, that returns specific amount of data per time
-        while len(state["tempStorage"]) < amount:
+        while len(self.tempStorage) < amount:
             # load data from the files
             try:
-                self.collectionName = self.baseName.format(state["counter"])
+                self.collectionName = self.baseName.format(self.loadCounter)
                 #print(f"reading {self.collectionName}")
-                state["tempStorage"].update(super().load()) # load the entire file content and place it to the temporal storage
+                self.tempStorage.update(super().load()) # load the entire file content and place it to the temporal storage
                 
-                state["counter"] += 1
+                self.loadCounter += 1
             except EXP_END_OF_DATA:
-                if len(state["tempStorage"]) == 0:
+                if len(self.tempStorage) == 0:
                     # if all files are read and temporary storage is empty -> no more data left to return
-                    state["counter"] = 0 # reset counter, get ready for reading from the first file again
+                    self.loadCounter = 0 # reset counter, get ready for reading from the first file again
                     raise EXP_END_OF_DATA # no more data left to read
                 break
 
-        if len(state["tempStorage"]) > amount:
+        if len(self.tempStorage) > amount:
             # return dictionary with specified amount of data and save the rest
-            result = dict(islice(state["tempStorage"].items(), amount))
+            result = dict(islice(self.tempStorage.items(), amount))
 
             for key in result.keys():
-                del state["tempStorage"][key]
+                del self.tempStorage[key]
 
             return result
         else:
             # just return loaded data as it is
-            result = dict(state["tempStorage"])
-            state["tempStorage"].clear()
+            result = dict(self.tempStorage)
+            self.tempStorage.clear()
             return result
 
     def save(self, data):
