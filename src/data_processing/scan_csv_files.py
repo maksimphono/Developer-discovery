@@ -184,7 +184,7 @@ class ProjectDataCreator:
 
         return {"proj_id" : proj_id, "users" : list()}
 
-def readCSVDatabase(priorityFiles = [], limit = 2) -> str:
+def readCSVDatabase(priorityFiles = list(), limit = 2, skipLines = dict()) -> str:
     ALLOWED_USER_TYPES = ["A", "B"]
     count = 0
     filesNames = []
@@ -197,7 +197,12 @@ def readCSVDatabase(priorityFiles = [], limit = 2) -> str:
         evaluationProjectObj = ProjectDataCreator.createEvaluationProject(fileName)
 
         with open(os.path.join(root, fileName), encoding="utf-8") as file:
-            file.readline()
+            if fileName in skipLines:
+                for i in range(skipLines[fileName] - 1): file.readline()
+                print(f"Skipped {skipLines[fileName]} lines for file {fileName}")
+            else:
+                file.readline()
+
             lines = file.readlines()
             for userData in filter(lambda user: user["type"] in ALLOWED_USER_TYPES, map(UserDataCreator.fromCSV, lines)):
                 users_db[userData["id"]] = userData
@@ -275,7 +280,7 @@ PRIORITY_CSV_FILES = [
 
 def scanUsersFromOneCSV(priorityFiles = PRIORITY_CSV_FILES):
     # will scan all users from a single CSV file in order to update 'users_db'
-    filesNames = readCSVDatabase(priorityFiles, 1)
+    filesNames = readCSVDatabase(priorityFiles, 1, {"user_profiles_github_opencv_opencv.csv" : 22150})
     readJSONDatabase(map(lambda fn: fn.replace(".csv", ".json"), filesNames))
 
 
