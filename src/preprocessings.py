@@ -92,7 +92,7 @@ def extractScannedUsers(data):
 
 cacheFileName = "cache__02-04-2025__(good)_{0}.json"
 
-adapter = JSONMultiFileAdapter(cacheFileName, 760)
+adapter = JSONMultiFileAdapter(cacheFileName, 850)
 #adapter = JSONAdapter(cacheFileName)
 
 ProjectsDatasetManager.usersCollection = usersCollection
@@ -123,7 +123,7 @@ counter = 0
 startPoint = time()
 
 try:
-    for i in range(760, 800): #60, 70
+    for i in range(850, 900): #60, 70
         manager.fromDB()
         manager.preprocess()
 

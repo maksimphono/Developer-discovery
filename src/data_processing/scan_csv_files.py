@@ -280,7 +280,7 @@ PRIORITY_CSV_FILES = [
 
 def scanUsersFromOneCSV(priorityFiles = PRIORITY_CSV_FILES):
     # will scan all users from a single CSV file in order to update 'users_db'
-    filesNames = readCSVDatabase(priorityFiles, 1, {"user_profiles_github_opencv_opencv.csv" : 54170})
+    filesNames = readCSVDatabase(priorityFiles, 1, {"user_profiles_github_opencv_opencv.csv" : 67160})
     readJSONDatabase(map(lambda fn: fn.replace(".csv", ".json"), filesNames))
 
 
