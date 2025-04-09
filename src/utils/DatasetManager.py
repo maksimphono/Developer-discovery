@@ -76,7 +76,7 @@ class ProjectsDatasetManager:
     def __init__(self, userNumber = float("inf"), validate = lambda data: True, cacheAdapter = None):
         self.userNumber = userNumber
         self.validate = validate
-        self.data = None
+        self.data = {}
         self.preprocessed = False
         self.ignoredUsers = IgnoreList()
         self.readability = {"flesch" : 13, "dale_chall" : 11}
