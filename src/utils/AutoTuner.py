@@ -37,6 +37,7 @@ class AutoTuner:
         # will tune model parameters, if 'initalPointsNum' specified, will define initial parameters, otherwise, will use pre-defined initial parameters
 
         if initalPointsNum == 0:
+            # use pre-defined initial values for parameters
             x0 = [p.initial for p in self.parameters]
             y0 = [self.objective(x0)]
             result = gp_minimize(self.objective,
@@ -48,6 +49,7 @@ class AutoTuner:
                         random_state = 42
                      )
         else:
+            # automatically generate intial values
             result = gp_minimize(self.objective,
                         self.valuesSpace,
                         n_calls = callsNum,
