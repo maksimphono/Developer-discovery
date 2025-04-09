@@ -264,10 +264,8 @@ class Model(gensim.models.doc2vec.Doc2Vec):
 
 
 adapter = JSONMultiFileAdapter(CACHE_FILE_NAME)
-#ProjectsDatasetManager.usersCollection = usersCollection
-#ProjectsDatasetManager.projectsCollection = projectsCollection
 manager = ProjectsDatasetManager(50, cacheAdapter = adapter)
-corpus = CacheCorpus(manager, limit = 50)
+corpus = CacheCorpus(manager)
 
 
 # In[12]:
