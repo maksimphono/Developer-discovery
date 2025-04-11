@@ -9,3 +9,4 @@ data/*
 logs/*.json
 logs/ignoreUsers.json
 src/utils/__pycache__
+*.pyc
