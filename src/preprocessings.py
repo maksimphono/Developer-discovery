@@ -27,10 +27,12 @@ print(requests.get("http://google.com"))
 # In[4]:
 
 
-from src.utils.CacheAdapter import JSONAdapter, JSONMultiFileAdapter
+from src.utils.CacheAdapter import JSONAdapter, JSONMultiFileAdapter, CACHE_02_04_25_GOOD_TMPLT
 from src.utils.DatasetManager import ProjectsDatasetManager
 from src.data_processing.scan_csv_files import UsersCollection
 from src.utils.DatabaseConnect import DatabaseConnect
+from src.utils.helpers import flatternData
+from src.utils.validators import projectDataIsGood
 
 # single machine setup (mongo is running here localy)
 # "ip a" for ip address
@@ -48,52 +50,15 @@ projectsCollection = DatabaseConnect.developer_discovery.proj_info()
 #usersCollection = DatabaseConnect.mini_database.users()
 print(projectsCollection)
 
-
-# In[5]:
-
-
-# In[6]:
-
-
-def flatternData(data : dict[str, list]) -> np.array(dict):
-    # takes in data in form of dict, where each key is a user id and each value is a list of that user's projects
-    # returns just flat list of these projects 
-    result = []
-
-    for projectsArray in data.values():
-        for project in projectsArray:
-            result.append(project)
-
-    return result
-
-
-# In[11]:
-
-
-# Validators are used to filter data by quality, 
-# for example, I can take only those project, that has long description, readme file and many stars
-
-def projectDataIsGood(projectData):
-    # filters good data (has description and both topics and language)
-    try:
-        return all((
-            projectData,
-            projectData["description"].count(" ") >= 2, # at least 2 spaces (hoping to find at least 3 words in the description)
-            (len(projectData["topics"]) or projectData["language"])
-        ))
-    except KeyError:
-        return False
+def extractScannedUsers(data):
+    return list(data.keys())
 
 
 USERS_NUMBER_TO_SCAN = 50
 
-def extractScannedUsers(data):
-    return list(data.keys())
-
-cacheFileName = "cache__02-04-2025__(good)_{0}.json"
+cacheFileName = CACHE_02_04_25_GOOD_TMPLT
 
 adapter = JSONMultiFileAdapter(cacheFileName, 1600)
-#adapter = JSONAdapter(cacheFileName)
 
 ProjectsDatasetManager.usersCollection = usersCollection
 ProjectsDatasetManager.projectsCollection = projectsCollection
@@ -101,14 +66,16 @@ ProjectsDatasetManager.translatorServers = ["http://54.90.185.243:8000/", "http:
 manager = ProjectsDatasetManager(USERS_NUMBER_TO_SCAN, validate = projectDataIsGood, cacheAdapter = adapter)
 
 
-# In[8]:
-
-
-print(manager.translateText("你好", 3))
+print(manager.translateText("你好, 欢迎！", 3))
 
 
 # In[9]:
 
+def loadUsersIgnoreList():
+    print("Loading users ignore list")
+
+def saveUsersIgnoreList():
+    print("Loading users ignore list")
 
 with open("/home/trukhinmaksim/src/logs/ignoreUsers(good).json", encoding = "utf-8") as file:
     manager.ignoreUsers(json.load(file))

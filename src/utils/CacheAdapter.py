@@ -128,3 +128,6 @@ class DBAdapter(CacheAdapter):
             result[user["id"]] = user["tokenized_projects"]
 
         return result
+
+
+CACHE_02_04_25_GOOD_TMPLT = "/home/trukhinmaksim/src/data/cache_02-04-25/cache__02-04-2025__(good)_{0}.json"

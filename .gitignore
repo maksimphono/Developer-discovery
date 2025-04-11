@@ -10,3 +10,4 @@ logs/*.json
 logs/ignoreUsers.json
 src/utils/__pycache__
 *.pyc
+results/09-04-25_evaluatuin.result
