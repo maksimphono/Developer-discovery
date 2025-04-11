@@ -1,15 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
-
 import sys
 sys.path.append('/home/trukhinmaksim/src')
-
-
-# In[2]:
-
 
 import numpy as np
 import requests
@@ -17,17 +10,7 @@ from random import random
 from time import sleep, time
 import json
 
-
-# In[3]:
-
-
-print(requests.get("http://google.com"))
-
-
-# In[4]:
-
-
-from src.utils.CacheAdapter import JSONAdapter, JSONMultiFileAdapter, CACHE_02_04_25_GOOD_TMPLT
+from src.utils.CacheAdapter import createAdapter_02_04_25_GOOD
 from src.utils.DatasetManager import ProjectsDatasetManager
 from src.data_processing.scan_csv_files import UsersCollection
 from src.utils.DatabaseConnect import DatabaseConnect
@@ -48,6 +31,10 @@ usersCollection = UsersCollection(10_000, ["user_profiles_github_agl_jbig2enc.cs
 projectsCollection = DatabaseConnect.developer_discovery.proj_info()
 #projectsCollection = DatabaseConnect.mini_database.projects()
 #usersCollection = DatabaseConnect.mini_database.users()
+
+# test connection to Google
+print(requests.get("http://google.com"))
+
 print(projectsCollection)
 
 def extractScannedUsers(data):
@@ -56,9 +43,7 @@ def extractScannedUsers(data):
 
 USERS_NUMBER_TO_SCAN = 50
 
-cacheFileName = CACHE_02_04_25_GOOD_TMPLT
-
-adapter = JSONMultiFileAdapter(cacheFileName, 1600)
+adapter = createAdapter_02_04_25_GOOD(saveCounter = 1600)
 
 ProjectsDatasetManager.usersCollection = usersCollection
 ProjectsDatasetManager.projectsCollection = projectsCollection
@@ -69,54 +54,13 @@ manager = ProjectsDatasetManager(USERS_NUMBER_TO_SCAN, validate = projectDataIsG
 print(manager.translateText("你好, 欢迎！", 3))
 
 
-# In[9]:
-
-def loadUsersIgnoreList():
-    print("Loading users ignore list")
-
-def saveUsersIgnoreList():
-    print("Loading users ignore list")
-
-with open("/home/trukhinmaksim/src/logs/ignoreUsers(good).json", encoding = "utf-8") as file:
-    manager.ignoreUsers(json.load(file))
-
-#print(manager.ignoredUsers)
+def loadUsersIgnoreList(manager):
+    with open("/home/trukhinmaksim/src/logs/ignoreUsers(good).json", encoding = "utf-8") as file:
+        manager.ignoreUsers(json.load(file))
+    print(f"Loaded {len(manager.ignoredUsers)} users into ignore list")
 
 
-# In[12]:
-
-
-counter = 0
-startPoint = time()
-
-try:
-    for i in range(1600, 1650): #60, 70
-        manager.fromDB()
-        manager.preprocess()
-
-        #print([*manager.data.items()][:5])
-        #print("\n")
-        scanned = extractScannedUsers(manager.data)
-        manager.ignoreUsers(scanned)
-
-        #adapter.collectionName = cacheFileName.format(i)
-        #print(adapter.collectionName)
-        adapter.save(manager.data)
-
-        counter += len(flatternData(manager.data))
-
-        manager.clearData()
-
-        sleepTime = 3 + random() * 17
-        print(f"Scanned {(i + 1) * USERS_NUMBER_TO_SCAN} users. Sleeping {sleepTime}")
-        sleep(sleepTime)
-
-    endPoint = time()
-    print(f"Total scanned: {counter} projects")
-    print(f"Time spent: {endPoint - startPoint} s")
-
-except Exception as exp:
-    print("\nException encountered!\n")
+def saveUsersIgnoreList(manager):
     print("\nAmount of users to ignore:")
     print(len([*manager.ignoredUsers]))
     print("Writing into file")
@@ -124,39 +68,50 @@ except Exception as exp:
     with open("/home/trukhinmaksim/src/logs/ignoreUsers(good).json", "w", encoding = "utf-8") as file:
         json.dump([*manager.ignoredUsers], fp = file, ensure_ascii=False, indent=4)
 
-    raise exp
+
+def main():
+    loadUsersIgnoreList(manager)
+
+    counter = 0
+    startPoint = time()
+
+    try:
+        for i in range(1600, 1650): #60, 70
+            manager.fromDB()
+            manager.preprocess()
+
+            #print([*manager.data.items()][:5])
+            #print("\n")
+            scanned = extractScannedUsers(manager.data)
+            manager.ignoreUsers(scanned)
+
+            adapter.save(manager.data)
+
+            counter += len(flatternData(manager.data))
+
+            manager.clearData()
+
+            sleepTime = 3 + random() * 17
+            print(f"Scanned {(i + 1) * USERS_NUMBER_TO_SCAN} users. Sleeping {sleepTime}")
+            sleep(sleepTime)
+
+        endPoint = time()
+        print(f"Total scanned: {counter} projects")
+        print(f"Time spent: {endPoint - startPoint} s")
+
+    except Exception as exp:
+        print("\nException encountered! Shutting down gracefully!\n")
+
+        raise exp
+
+    finally:
+        saveUsersIgnoreList(manager)
 
 
-# In[ ]:
+    with open("/home/trukhinmaksim/src/logs/ignoreUsers(good).json", encoding = "utf-8") as file:
+        data = json.load(fp = file)
 
+    print(len(set(data)))
 
-#print([*manager.ignoredUsers][220:230])
-print("\nAmount of users to ignore:")
-print(len([*manager.ignoredUsers]))
-print("Writing into file")
-
-with open("/home/trukhinmaksim/src/logs/ignoreUsers(good).json", "w", encoding = "utf-8") as file:
-    json.dump([*manager.ignoredUsers], fp = file, ensure_ascii=False, indent=4)
-
-
-# In[ ]:
-
-with open("/home/trukhinmaksim/src/logs/ignoreUsers(good).json", encoding = "utf-8") as file:
-    data = json.load(fp = file)
-
-print(len(set(data)))
-
-"""
-data += ignore
-
-print(len(set(data)))
-with open("/home/trukhinmaksim/src/logs/ignoreUsers.json", "w", encoding = "utf-8") as file:
-    json.dump(data, fp = file)
-"""
-
-
-# In[ ]:
-
-
-
-
+if __name__ == "__main__":
+    main()

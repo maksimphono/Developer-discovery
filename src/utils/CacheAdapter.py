@@ -131,3 +131,7 @@ class DBAdapter(CacheAdapter):
 
 
 CACHE_02_04_25_GOOD_TMPLT = "/home/trukhinmaksim/src/data/cache_02-04-25/cache__02-04-2025__(good)_{0}.json"
+
+
+def createAdapter_02_04_25_GOOD(*args, **kwargs):
+    return JSONMultiFileAdapter(baseName = CACHE_02_04_25_GOOD_TMPLT, *args, **kwargs)

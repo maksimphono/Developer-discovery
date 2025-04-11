@@ -18,30 +18,18 @@ from random import sample, seed as randomSeed
 from collections import defaultdict
 from numpy import mean
 
-
-# In[3]:
-
-
-from src.utils.CacheAdapter import JSONAdapter, JSONMultiFileAdapter, EXP_END_OF_DATA
+from src.utils.CacheAdapter import JSONMultiFileAdapter, EXP_END_OF_DATA, createAdapter_02_04_25_GOOD
 from src.utils.DatasetManager import ProjectsDatasetManager
 from src.utils.validators import projectDataIsSufficient
 from src.utils.Corpus import CacheCorpus
-
 
 from skopt.space import Real, Integer
 from src.utils.AutoTuner import AutoTuner, Param
 from src.Doc2Vec_model import Model
 
-# In[6]:
-
-
 CACHE_FILE_NAME = "cache__02-04-2025__(good)_{0}.json"
 
-
 # using adapter to load data from the cache files
-
-# In[9]:
-
 
 import logging
 logging.basicConfig(
@@ -50,32 +38,15 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-
-# In[10]:
-
-
-
-# In[11]:
-
-
-adapter = JSONMultiFileAdapter(CACHE_FILE_NAME)
+adapter = createAdapter_02_04_25_GOOD()#JSONMultiFileAdapter(CACHE_FILE_NAME)
 manager = ProjectsDatasetManager(50, cacheAdapter = adapter)
 corpus = CacheCorpus(manager, 100)
-
-
-# In[12]:
-
 
 # creating model
 
 VECTOR_SIZE = 7
 ALPHA_INIT = 0.05
 ALPHA_FINAL = 0.00001
-
-# In[13]:
-
-
-# autotunning model parameters
 
 def createModel(**kwargs):
     model = Model(
@@ -92,6 +63,9 @@ def createModel(**kwargs):
     logging.info(f"\nModel created with parameters {kwargs}\n")
 
     return model
+
+
+# autotunning model parameters
 
 def main():
     logging.info("Welcome!")
@@ -118,14 +92,12 @@ def main():
     with open("/home/trukhinmaksim/src/results/09-04-25_evaluatuin.result", "w") as file:
         print(results, file = file)
 
-try:
-    main()
-    exit(0)
-except Exception as exp:
-    logging.error(f"Error occured, last best performance score was {Model.bestScore} with parameters {Model.bestParameters}\n")
-    logging.error(str(exp))
-    exit(1)
-
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+        exit(0)
+    except Exception as exp:
+        logging.error(f"Error occured, last best performance score was {Model.bestScore} with parameters {Model.bestParameters}\n")
+        logging.error(str(exp))
+        exit(1)
