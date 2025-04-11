@@ -32,7 +32,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
     bestParameters = None
     bestScore = 0
 
-    VECTOR_SIZE = 4 # 190
+    VECTOR_SIZE = 4 #190
     ALPHA_INIT = 0.05
     ALPHA_FINAL = 0.00001
 
@@ -82,6 +82,9 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         else:
             # combine DM and DBOW
             pass
+
+    def test(self):
+        pass
 
     def assess(self, sampleNum = 5, silent = False, format = "full", random_state = None):
         # simple test of model performance
