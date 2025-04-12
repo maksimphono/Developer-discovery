@@ -52,6 +52,7 @@ class FlatAdapter(CacheAdapter):
         return docs
 
     def save(self, data):
+        print("Saving")
         for doc in data:
             json.dump(doc, fp = self.writeFp, ensure_ascii = False, separators=(',', ':'))
             print("", file = self.writeFp)
@@ -170,7 +171,14 @@ class DBAdapter(CacheAdapter):
 
 
 CACHE_02_04_25_GOOD_TMPLT = "/home/trukhinmaksim/src/data/cache_02-04-25/cache__02-04-2025__(good)_{0}.json"
-
+TRAIN_CACHE_02_04_25_GOOD = "/home/trukhinmaksim/src/data/train_02-04-25/train_02-04-25"
+TEST_CACHE_02_04_25_GOOD = "/home/trukhinmaksim/src/data/train_02-04-25/test_02-04-25"
 
 def createAdapter_02_04_25_GOOD(*args, **kwargs):
     return JSONMultiFileAdapter(baseName = CACHE_02_04_25_GOOD_TMPLT, *args, **kwargs)
+
+def createTrainSetAdapter_02_04_25_GOOD():
+    return FlatAdapter(TRAIN_CACHE_02_04_25_GOOD)
+
+def createTestSetAdapter_02_04_25_GOOD():
+    return FlatAdapter(TEST_CACHE_02_04_25_GOOD)
