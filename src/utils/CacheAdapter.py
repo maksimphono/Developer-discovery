@@ -2,7 +2,7 @@ import os
 import json
 from itertools import islice
 
-PREPROCESSED_DATA_CACHE_PATH = "/home/trukhinmaksim/src/data/cache_02-04-25"
+PREPROCESSED_DATA_CACHE_PATH = "/home/trukhinmaksim/src/data/train_02-04-25"
 
 class EXP_END_OF_DATA(Exception):
     pass
@@ -19,6 +19,45 @@ class CacheAdapter:
 
     def save(self, data):
         return {}
+
+class FlatAdapter(CacheAdapter):
+    # items (json objects) are written on each line of that file, one line = one json object
+    def __init__(self, collectionName = "", *args, **kwargs):
+        super().__init__(collectionName, *args, **kwargs)
+        self.readFp = open(os.path.join(PREPROCESSED_DATA_CACHE_PATH, self.collectionName), encoding = "utf-8")
+        self.writeFp = open(os.path.join(PREPROCESSED_DATA_CACHE_PATH, self.collectionName), "a+", encoding = "utf-8")
+
+    def __del__(self):
+        self.readFp.close()
+        self.writeFp.close()
+        super().__del__()
+
+    def reset():
+        self.readFp.close()
+        self.writeFp.close()
+        self.readFp = open(os.path.join(PREPROCESSED_DATA_CACHE_PATH, self.collectionName), encoding = "utf-8")
+        self.writeFp = open(os.path.join(PREPROCESSED_DATA_CACHE_PATH, self.collectionName), "a+", encoding = "utf-8")
+
+    def load(self, amount = 25):
+        docs = []
+
+        for i in range(amount):
+            doc = json.loads(self.readFp.readline())
+
+            if len(doc) == 0: # empty object in the line
+                raise EXP_END_OF_DATA
+
+            docs.append(doc)
+
+        return docs
+
+    def save(self, data):
+        for doc in data:
+            json.dump(doc, fp = self.writeFp, ensure_ascii = False, separators=(',', ':'))
+            print("", file = self.writeFp)
+
+        return data
+
 
 class JSONAdapter(CacheAdapter):
     PREPROCESSED_DATA_CACHE_PATH = PREPROCESSED_DATA_CACHE_PATH
@@ -52,7 +91,7 @@ class JSONAdapter(CacheAdapter):
             fileName = next(os.walk(JSONAdapter.PREPROCESSED_DATA_CACHE_PATH))[2][0]
 
         with open(os.path.join(JSONAdapter.PREPROCESSED_DATA_CACHE_PATH, fileName), "w", encoding = "utf-8") as file:
-            json.dump(data, fp = file)
+            json.dump(data, readFp = file)
 
         return data
 
