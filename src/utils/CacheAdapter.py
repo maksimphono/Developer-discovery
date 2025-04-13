@@ -55,16 +55,11 @@ class FlatAdapter(CacheAdapter):
 
         return docs
 
-    def save(self, data, count = [0]):
-        #if count[0] % 10000 == 0: print(f"Save called {count[0]} times")
-
+    def save(self, data):
         with open(os.path.join(PREPROCESSED_DATA_CACHE_PATH, self.collectionName), "a+", encoding = "utf-8") as writeFp:
             for doc in data:
-                #print(f"Saving {doc['tags'][0]}")
                 json.dump(doc, fp = writeFp, ensure_ascii = False, separators=(',', ':'))
                 writeFp.write("\n")
-
-        #count[0] += 1
 
         return data
 

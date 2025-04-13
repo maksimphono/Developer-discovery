@@ -25,6 +25,9 @@ class Corpus:
         pass
     def __getitem__(self, index : int):
         pass
+    def reset(self):
+        # will iterate over the corpus to the end
+        for doc in self: pass
 
 class CacheCorpus(Corpus):
     def __init__(self, manager, limit = float("inf")):
