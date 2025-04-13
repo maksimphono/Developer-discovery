@@ -53,7 +53,9 @@ class Model(gensim.models.doc2vec.Doc2Vec):
     
     def __init__(self, dm_dbow_mode = "DM", pretrain_w2v = False, alpha_init = 0.05, alpha_final = 0.001, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.corpus = None # corpus is an iterator(iterable class object), that will be used in "train" method of Doc2Vec model for data extraction
+        self.trainCorpus = None # corpus is an iterator(iterable class object), that will be used in "train" method of Doc2Vec model for data extraction
+        self.testCorpus = None # corpuses should be static structures, that are not changing in process of evaluation
+        self.relevant = []
         self.alphaInit = alpha_init
         self.alphaFinal = alpha_final
         self.dmDbowMode = dm_dbow_mode
@@ -62,18 +64,18 @@ class Model(gensim.models.doc2vec.Doc2Vec):
     def train(self):
         # will build vocabulary and train the model on corpus (corpus will be fed by corpus)
         
-        if not isinstance(self.corpus, Corpus): raise EXP_CORPUS_IS_NONE
+        if not isinstance(self.trainCorpus, Corpus): raise EXP_CORPUS_IS_NONE
         #if not isinstance(self.manager, ProjectsDatasetManager): raise EXP_MANAGER_IS_NONE
 
         start = time()
-        self.build_vocab(self.corpus)
+        self.build_vocab(self.trainCorpus)
         logging.info(f"\nVocabulary built in {time() - start} s\n")
 
         if self.dmDbowMode != "DM+DBOW":
             start = time()
             super().train(
-                self.corpus, 
-                total_examples = self.corpus_count, 
+                self.trainCorpus, 
+                total_examples = self.trainCorpus_count, 
                 epochs = self.epochs,
                 start_alpha = self.alphaInit,
                 end_alpha = self.alphaFinal
@@ -83,7 +85,35 @@ class Model(gensim.models.doc2vec.Doc2Vec):
             # combine DM and DBOW
             pass
 
+    def constructRelevant(self):
+        # note, that items are placed in the list in the same order as in test corpus, so order of items in corpus shouldn't change
+        # TODO: complete this method for relevant collection
+        """
+        # pseudocode:
+        for query in test_set:
+            for doc in train_set:
+                # find all vectors in my train set, that are relevant to the query
+                if share_common_tags(doc, query):
+                    query.add_relevant(doc)
+        """
+        for query in self.testCorpus:
+            for doc in self.trainCorpus:
+                pass
+
     def test(self):
+        # TODO: complete this method with the new evaluation technique
+        """
+        # preudocode:
+        f1_scores = []
+        for query in test set:
+            vec = model.get_vector(query)
+            topK = vec.selct_K_most_similar()
+            p = calculate_precision(topK, query.get_relevants())
+            r = calculate_recall(topK, query.get_relevants())
+            f1_scores.add( calculate_f1(p, r) )
+
+        return mean(f1_scores)
+        """
         pass
 
     def assess(self, sampleNum = 5, silent = False, format = "full", random_state = None):
@@ -93,7 +123,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
 
         log = lambda s: print(s) if not silent else None
         #performanceGrageScale = {50 : "Random", 60 : "Poor", 70 : "Bad", 80 : "Medium", 92 : "Optimal", 97 : "Perfect"}
-        totalDocuments = self.corpus_count
+        totalDocuments = self.trainCorpus_count
         if random_state != None: randomSeed(random_state)
         indexes = sample(range(totalDocuments), sampleNum)
         if format == "full":
@@ -102,7 +132,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         i = 0
         avgPerformances = []
 
-        for doc in self.corpus:
+        for doc in self.trainCorpus:
             if i >= totalDocuments: break
             if i in indexes:
                 vector = self.infer_vector(doc.words)
