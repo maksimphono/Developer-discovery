@@ -25,37 +25,46 @@ class FlatAdapter(CacheAdapter):
     def __init__(self, collectionName = "", *args, **kwargs):
         super().__init__(collectionName, *args, **kwargs)
         self.readFp = open(os.path.join(PREPROCESSED_DATA_CACHE_PATH, self.collectionName), encoding = "utf-8")
-        self.writeFp = open(os.path.join(PREPROCESSED_DATA_CACHE_PATH, self.collectionName), "a+", encoding = "utf-8")
+        #self.writeFp = open(os.path.join(PREPROCESSED_DATA_CACHE_PATH, self.collectionName), "a+", encoding = "utf-8")
 
     def __del__(self):
         self.readFp.close()
-        self.writeFp.close()
+        #self.writeFp.close()
         super().__del__()
 
-    def reset():
+    def resetRead(self):
         self.readFp.close()
-        self.writeFp.close()
+        #self.writeFp.close()
         self.readFp = open(os.path.join(PREPROCESSED_DATA_CACHE_PATH, self.collectionName), encoding = "utf-8")
-        self.writeFp = open(os.path.join(PREPROCESSED_DATA_CACHE_PATH, self.collectionName), "a+", encoding = "utf-8")
+        #self.writeFp = open(os.path.join(PREPROCESSED_DATA_CACHE_PATH, self.collectionName), "a+", encoding = "utf-8")
+
+    def reset(self):
+        self.resetRead()
 
     def load(self, amount = 25):
         docs = []
 
         for i in range(amount):
-            doc = json.loads(self.readFp.readline())
+            line = self.readFp.readline()
 
-            if len(doc) == 0: # empty object in the line
+            if len(line) == 0: # empty object in the line
+                self.resetRead()
                 raise EXP_END_OF_DATA
 
-            docs.append(doc)
+            docs.append(json.loads(line))
 
         return docs
 
-    def save(self, data):
-        print("Saving")
-        for doc in data:
-            json.dump(doc, fp = self.writeFp, ensure_ascii = False, separators=(',', ':'))
-            print("", file = self.writeFp)
+    def save(self, data, count = [0]):
+        #if count[0] % 10000 == 0: print(f"Save called {count[0]} times")
+
+        with open(os.path.join(PREPROCESSED_DATA_CACHE_PATH, self.collectionName), "a+", encoding = "utf-8") as writeFp:
+            for doc in data:
+                #print(f"Saving {doc['tags'][0]}")
+                json.dump(doc, fp = writeFp, ensure_ascii = False, separators=(',', ':'))
+                writeFp.write("\n")
+
+        #count[0] += 1
 
         return data
 
@@ -182,3 +191,6 @@ def createTrainSetAdapter_02_04_25_GOOD():
 
 def createTestSetAdapter_02_04_25_GOOD():
     return FlatAdapter(TEST_CACHE_02_04_25_GOOD)
+
+def createNormAdapter_02_04_25_GOOD():
+    return FlatAdapter("/home/trukhinmaksim/src/data/normalized_02-04-25_(good)/normalized_02-04-25_(good)")

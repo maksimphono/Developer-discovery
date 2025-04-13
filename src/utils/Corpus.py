@@ -95,4 +95,4 @@ class FlatCorpus(Corpus):
                 break
 
         i = 0
-        self.manager.cacheAdapter.reset()
+        self.adapter.reset()
