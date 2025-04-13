@@ -96,11 +96,17 @@ class Model(gensim.models.doc2vec.Doc2Vec):
                 if share_common_tags(doc, query):
                     query.add_relevant(doc)
         """
+        self.relevant.clear()
         for query in self.testCorpus:
-            for doc in self.trainCorpus:
-                pass
+            self.relevant.append(set())
 
-    def test(self):
+            for doc in self.trainCorpus:
+                if len(set(doc.tags[1:]) & set(query.tags[1:])): # ignore very first tags because they are ids
+                    self.relevant[-1].add(doc.tags[0]) # add this document's id (very first tag) to the set of relevants for that query
+
+        return self.relevant
+
+    def test(self, k = 9):
         # TODO: complete this method with the new evaluation technique
         """
         # preudocode:
@@ -114,7 +120,19 @@ class Model(gensim.models.doc2vec.Doc2Vec):
 
         return mean(f1_scores)
         """
-        pass
+        def selectKmostSimilar(vector):
+            nonlocal self, k
+            return set((sim[0] for sim in self.dv.most_similar(positive = [vector], topn = k)))
+
+        i = 0
+        for query in self.testCorpus:
+            if i >= 1: break
+            vector = self.infer_vector(query.words)
+            topK = selectKmostSimilar(vectors)
+
+            i += 1
+
+            
 
     def assess(self, sampleNum = 5, silent = False, format = "full", random_state = None):
         # simple test of model performance
