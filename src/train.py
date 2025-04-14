@@ -21,7 +21,7 @@ from numpy import mean
 from src.utils.CacheAdapter import JSONMultiFileAdapter, EXP_END_OF_DATA, createAdapter_02_04_25_GOOD
 from src.utils.DatasetManager import ProjectsDatasetManager
 from src.utils.validators import projectDataIsSufficient
-from src.utils.Corpus import CacheCorpus
+from src.utils.Corpus import CacheCorpus, Factory as CorpusFactory
 
 from skopt.space import Real, Integer
 from src.utils.AutoTuner import AutoTuner, Param
@@ -56,9 +56,10 @@ def createModel(**kwargs):
                 alpha_final = ALPHA_FINAL,
                 **kwargs
             )
-    manager.cacheAdapter.reset()
-    manager.clearData()
-    model.corpus = corpus
+    #manager.cacheAdapter.reset()
+    #manager.clearData()
+    model.trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD()
+    model.testCorpus = CorpusFactory.createFlatTestCorpus_02_04_25_GOOD()
 
     logging.info(f"\nModel created with parameters {kwargs}\n")
 

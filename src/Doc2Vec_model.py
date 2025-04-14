@@ -64,7 +64,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         self.pretrainW2V = pretrain_w2v
     
     def train(self):
-        # will build vocabulary and train the model on corpus (corpus will be fed by corpus)
+        # will build vocabulary and train the model on trainset (trainset will be fed by corpus)
         
         self.trainCorpus.onlyID = True # for training, I have to get only id of each vector as tag
         if not isinstance(self.trainCorpus, Corpus): raise EXP_CORPUS_IS_NONE
@@ -130,25 +130,11 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         return results
 
     def test(self, k = 9):
-        # TODO: complete this method with the new evaluation technique
-        """
-        # preudocode:
-        f1_scores = []
-        for query in test set:
-            vec = model.get_vector(query)
-            topK = vec.selct_K_most_similar()
-            p = calculate_precision(topK, query.get_relevants())
-            r = calculate_recall(topK, query.get_relevants())
-            f1_scores.add( calculate_f1(p, r) )
-
-        return mean(f1_scores)
-        """
-
         start = time()
         f1Scores = []
         i = 0
 
-        self.trainCorpus.onlyID = False # for evaluation all tags are needed
+        self.trainCorpus.onlyID = False # for testing all tags are needed
 
         for query in self.testCorpus:
             vector = self.infer_vector(query.words)

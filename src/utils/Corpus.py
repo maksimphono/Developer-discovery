@@ -35,7 +35,7 @@ class CacheCorpus(Corpus):
     def __init__(self, manager, limit = float("inf")):
         self.manager = manager # manager is needed not only for interaction with adapter, but also if I want to use unpreprocessed dataset and preprocess it on the way
         self.limit = limit
-        self.resetOnIter = False
+        
 
     def __iter__(self):
         # will feed preprocessed projects data as TaggedDocument instances one by one
@@ -79,7 +79,6 @@ class FlatCorpus(Corpus):
             self.adapter = createTrainSetAdapter_02_04_25_GOOD()
 
         self.limit = limit
-        self.resetOnIter = False
         self.onlyID = False
 
     def reset(self):
