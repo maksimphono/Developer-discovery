@@ -57,7 +57,6 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         super().__init__(*args, **kwargs)
         self.trainCorpus = None # corpus is an iterator(iterable class object), that will be used in "train" method of Doc2Vec model for data extraction
         self.testCorpus = None # corpuses should be static structures, that are not changing in process of evaluation
-        self.relevant = []
         self.alphaInit = alpha_init
         self.alphaFinal = alpha_final
         self.dmDbowMode = dm_dbow_mode
@@ -216,3 +215,12 @@ class Model(gensim.models.doc2vec.Doc2Vec):
             }
 
         return result
+
+    def save(self, fname, *args, **kwargs):
+        super().save(fname, *args, **kwargs)
+        # Save custom attributes in a separate file
+        with open(fname + ".custom_data", 'w') as f:
+            for name, attr in self.__getstate__().items():
+                print(f"{name} {attr}", file = f)
+
+        logging.info(f"Model saved into {fname}")

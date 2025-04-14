@@ -19,6 +19,7 @@ class AutoTuner:
         self.modelConstructor = modelConstructor
         self.parameters = [*parameters]
         self.valuesSpace = [parameter.type(parameter.range[0], parameter.range[1], prior = parameter.prior, name = parameter.name) for parameter in self.parameters]
+        self.model = None # will be created later during tunining process
 
         # check if the constructed model object has method 'evaluate'
         model = self.modelConstructor(**{p.name : p.initial for p in self.parameters})
@@ -27,10 +28,10 @@ class AutoTuner:
 
     def objective(self, params):
         parameters = dict(zip((p.name for p in self.parameters), params))
-        model = self.modelConstructor(**parameters)
+        self.model = self.modelConstructor(**parameters)
 
         # Use cross-validation for a more robust evaluation
-        return -model.evaluate()
+        return -self.model.evaluate()
 
 
     def tune(self, callsNum = 30, initalPointsNum = 0):
