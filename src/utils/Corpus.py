@@ -79,6 +79,8 @@ class FlatCorpus(Corpus):
         self.limit = limit
         self.resetOnIter = False
 
+    def reset(self):
+        self.adapter.reset()
 
     def __iter__(self):
         # will feed preprocessed projects data as TaggedDocument instances one by one
@@ -99,3 +101,20 @@ class FlatCorpus(Corpus):
 
         i = 0
         self.adapter.reset()
+
+    def __getitem__(self, _indexes):
+        results = []
+        indexes = sorted(_indexes)
+
+        self.reset()
+        i = 0
+        for doc in self:
+            if len(indexes) == 0: break
+            if i == indexes[0]:
+                results.append(doc)
+                indexes.pop(0) # move to the next index
+
+            i += 1
+
+        self.reset()
+        return results

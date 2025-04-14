@@ -12,10 +12,12 @@ import logging
 from src.utils.CacheAdapter import JSONAdapter, JSONMultiFileAdapter, EXP_END_OF_DATA
 from src.utils.DatasetManager import ProjectsDatasetManager
 from src.utils.validators import projectDataIsSufficient
+from src.utils.Corpus import Corpus
 
 import gensim
+from sklearn.metrics.pairwise import cosine_similarity, 
+from sklearn.metrics import precision_score, recall_score, f1_score
 
-from src.utils.Corpus import Corpus
 
 class EXP_CORPUS_IS_NONE(Exception):
     def __init__(self):
@@ -85,9 +87,40 @@ class Model(gensim.models.doc2vec.Doc2Vec):
             # combine DM and DBOW
             pass
 
+    def selectKmostSimilar(self, vector, k):
+        simsIndexes = [(0, 0)] # works like monotonic stack, projects with higher score are pushed higher (closer to the end)
+        query = vector.reshape(1, -1)
+
+        def insert(index, score):
+            nonlocal simsIndexes, k
+            inserted = False
+
+            # starting from 1 because that function is called only if score is higher then the 0-th element, so here isn't necessary to check it again
+            for i, pair in enumerate(simsIndexes[1:], 1):
+                if score <= pair[1]:
+                    simsIndexes.insert(i, (index, score))
+                    inserted = True
+                    break
+
+            if not inserted:
+                # if the new score is the highest
+                simsIndexes.append((index, score))
+
+            if len(simsIndexes) > k:
+                simsIndexes.pop(0)
+
+        for i, vec in enumerate(self.dv):
+            # traverse through all vectors, here vectors are listed in the same order as in the corpus, so I'm recoring index of each vector
+            score = cosine_similarity(query, vec.reshape(1, -1))[0][0]
+
+            if score > simsIndexes[0]: # if the insertation is needed in the first place
+                insert(i, score)
+
+        return simsIndexes
+
+
     def constructRelevant(self):
         # note, that items are placed in the list in the same order as in test corpus, so order of items in corpus shouldn't change
-        # TODO: complete this method for relevant collection
         """
         # pseudocode:
         for query in test_set:
@@ -106,6 +139,15 @@ class Model(gensim.models.doc2vec.Doc2Vec):
 
         return self.relevant
 
+    def checkRelevants(self, indexes, tags):
+        results = np.zeros(len(indexes))
+
+        for i, doc in enumerate(self.trainCorpus[indexes]):
+            if len(set(tags) & set(doc.tags)) > 0: # if that document is actually relevant
+                results[i] = 1
+
+        return results
+
     def test(self, k = 9):
         # TODO: complete this method with the new evaluation technique
         """
@@ -120,19 +162,22 @@ class Model(gensim.models.doc2vec.Doc2Vec):
 
         return mean(f1_scores)
         """
-        def selectKmostSimilar(vector):
-            nonlocal self, k
-            return set((sim[0] for sim in self.dv.most_similar(positive = [vector], topn = k)))
 
+        f1Scores = []
         i = 0
         for query in self.testCorpus:
-            if i >= 1: break
+            #if i >= 1: break # killme
             vector = self.infer_vector(query.words)
-            topK = selectKmostSimilar(vectors)
+            topK = sorted(self.selectKmostSimilar(vector, k), key = lambda pair: pair[0])
+
+            predictedRelevant = np.ones(k)
+            trueRelevant = self.checkRelevants([p[0] for p in topK], query.tags)
+
+            f1Scores.append(f1_score(trueRelevant, predictedRelevant))
 
             i += 1
 
-            
+        return np.mean(f1Scores)
 
     def assess(self, sampleNum = 5, silent = False, format = "full", random_state = None):
         # simple test of model performance
@@ -182,7 +227,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         else:
             return mean(avgPerformances)
 
-    def evaluate(self):
+    def evaluate(self): # this method is used be autotuner
         # will train the model on upon-selected set of parameters and test it's performance
         self.train()
 
