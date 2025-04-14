@@ -124,3 +124,16 @@ class FlatCorpus(Corpus):
 
         self.reset()
         return results
+
+from src.utils.CacheAdapter import createTestSetAdapter_02_04_25_GOOD, createTrainSetAdapter_02_04_25_GOOD
+
+class Factory:
+    @classmethod
+    def createFlatTrainCorpus_02_04_25_GOOD(cls, limit = np.inf):
+        adapter = createTrainSetAdapter_02_04_25_GOOD()
+        return FlatCorpus(adapter, limit = limit)
+
+    @classmethod
+    def createFlatTestCorpus_02_04_25_GOOD(cls, limit = np.inf):
+        adapter = createTestSetAdapter_02_04_25_GOOD()
+        return FlatCorpus(adapter, limit = limit)
