@@ -15,7 +15,7 @@ from src.utils.validators import projectDataIsSufficient
 from src.utils.Corpus import Corpus
 
 import gensim
-from sklearn.metrics.pairwise import cosine_similarity, 
+from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics import precision_score, recall_score, f1_score
 
 
@@ -66,6 +66,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
     def train(self):
         # will build vocabulary and train the model on corpus (corpus will be fed by corpus)
         
+        self.trainCorpus.onlyID = True # for training, I have to get only id of each vector as tag
         if not isinstance(self.trainCorpus, Corpus): raise EXP_CORPUS_IS_NONE
         #if not isinstance(self.manager, ProjectsDatasetManager): raise EXP_MANAGER_IS_NONE
 
@@ -77,7 +78,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
             start = time()
             super().train(
                 self.trainCorpus, 
-                total_examples = self.trainCorpus_count, 
+                total_examples = self.corpus_count, 
                 epochs = self.epochs,
                 start_alpha = self.alphaInit,
                 end_alpha = self.alphaFinal
@@ -88,7 +89,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
             pass
 
     def selectKmostSimilar(self, vector, k):
-        simsIndexes = [(0, 0)] # works like monotonic stack, projects with higher score are pushed higher (closer to the end)
+        simsIndexes = [(0, -np.inf)] # works like monotonic stack, projects with higher score are pushed higher (closer to the end)
         query = vector.reshape(1, -1)
 
         def insert(index, score):
@@ -109,35 +110,15 @@ class Model(gensim.models.doc2vec.Doc2Vec):
             if len(simsIndexes) > k:
                 simsIndexes.pop(0)
 
-        for i, vec in enumerate(self.dv):
+
+        for i, vec in enumerate(self.dv.vectors):
             # traverse through all vectors, here vectors are listed in the same order as in the corpus, so I'm recoring index of each vector
             score = cosine_similarity(query, vec.reshape(1, -1))[0][0]
 
-            if score > simsIndexes[0]: # if the insertation is needed in the first place
+            if score > simsIndexes[0][1]: # if the insertation is needed in the first place
                 insert(i, score)
 
         return simsIndexes
-
-
-    def constructRelevant(self):
-        # note, that items are placed in the list in the same order as in test corpus, so order of items in corpus shouldn't change
-        """
-        # pseudocode:
-        for query in test_set:
-            for doc in train_set:
-                # find all vectors in my train set, that are relevant to the query
-                if share_common_tags(doc, query):
-                    query.add_relevant(doc)
-        """
-        self.relevant.clear()
-        for query in self.testCorpus:
-            self.relevant.append(set())
-
-            for doc in self.trainCorpus:
-                if len(set(doc.tags[1:]) & set(query.tags[1:])): # ignore very first tags because they are ids
-                    self.relevant[-1].add(doc.tags[0]) # add this document's id (very first tag) to the set of relevants for that query
-
-        return self.relevant
 
     def checkRelevants(self, indexes, tags):
         results = np.zeros(len(indexes))
@@ -163,10 +144,13 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         return mean(f1_scores)
         """
 
+        start = time()
         f1Scores = []
         i = 0
+
+        self.trainCorpus.onlyID = False # for evaluation all tags are needed
+
         for query in self.testCorpus:
-            #if i >= 1: break # killme
             vector = self.infer_vector(query.words)
             topK = sorted(self.selectKmostSimilar(vector, k), key = lambda pair: pair[0])
 
@@ -177,6 +161,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
 
             i += 1
 
+        logging.info(f"Testing completed in {time() - start} s")
         return np.mean(f1Scores)
 
     def assess(self, sampleNum = 5, silent = False, format = "full", random_state = None):
@@ -231,7 +216,8 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         # will train the model on upon-selected set of parameters and test it's performance
         self.train()
 
-        result = self.assess(6, silent = True, format = "mean", random_state = 42)
+        #result = self.test(6000, silent = True, format = "mean", random_state = 42)
+        result = self.test(k = 9)
 
         if Model.bestScore < result:
             Model.bestScore = result

@@ -19,6 +19,8 @@ from src.utils.helpers import flatternData
 
 class Corpus:
     # base class for every data corpus, that will be used by model
+    includeAllTags = True
+    onlyID = False
     def __init__(self):
         pass
     def __iter__(self):
@@ -78,6 +80,7 @@ class FlatCorpus(Corpus):
 
         self.limit = limit
         self.resetOnIter = False
+        self.onlyID = False
 
     def reset(self):
         self.adapter.reset()
@@ -89,7 +92,10 @@ class FlatCorpus(Corpus):
         while True:
             try:
                 doc = self.adapter.load(1)[0]
-                yield TaggedDocument(words = doc["tokens"], tags = doc["tags"])
+                if self.onlyID:
+                    yield TaggedDocument(words = doc["tokens"], tags = doc["tags"][:1]) # tags[0] is always an id
+                else:
+                    yield TaggedDocument(words = doc["tokens"], tags = doc["tags"])
 
                 i += 1
                 if i >= self.limit:
@@ -100,11 +106,11 @@ class FlatCorpus(Corpus):
                 break
 
         i = 0
-        self.adapter.reset()
+        self.reset()
 
     def __getitem__(self, _indexes):
         results = []
-        indexes = sorted(_indexes)
+        indexes = [*_indexes] # '_indexes' must be sorted
 
         self.reset()
         i = 0
