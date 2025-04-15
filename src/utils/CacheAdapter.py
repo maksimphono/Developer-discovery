@@ -1,6 +1,7 @@
 import os
 import json
 from itertools import islice
+import logging
 
 PREPROCESSED_DATA_CACHE_PATH = "/home/trukhinmaksim/src/data/train_02-04-25"
 
@@ -24,13 +25,14 @@ class FlatAdapter(CacheAdapter):
     # items (json objects) are written on each line of that file, one line = one json object
     def __init__(self, collectionName = "", *args, **kwargs):
         super().__init__(collectionName, *args, **kwargs)
-        self.readFp = open(os.path.join(PREPROCESSED_DATA_CACHE_PATH, self.collectionName), encoding = "utf-8")
+        self.readFp = open(os.path.join(PREPROCESSED_DATA_CACHE_PATH, self.collectionName), "r", encoding = "utf-8")
         #self.writeFp = open(os.path.join(PREPROCESSED_DATA_CACHE_PATH, self.collectionName), "a+", encoding = "utf-8")
 
     def __del__(self):
         self.readFp.close()
+        logging.info("Delete adapter")
         #self.writeFp.close()
-        super().__del__()
+        #super().__del__()
 
     def resetRead(self):
         self.readFp.close()

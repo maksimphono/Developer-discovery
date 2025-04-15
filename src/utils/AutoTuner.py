@@ -9,7 +9,7 @@ from skopt import gp_minimize
 from skopt.plots import plot_convergence
 import matplotlib.pyplot as plt
 import logging
-import time
+from time import time
 
 
 class AutoTuner:
@@ -26,7 +26,6 @@ class AutoTuner:
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
-        return logging.getLogger(__name__ + '.AutoTuner')
 
     def __init__(self, modelConstructor, parameters : dict = dict()):
         self.modelConstructor = modelConstructor
@@ -54,7 +53,7 @@ class AutoTuner:
     def tune(self, callsNum = 30, initalPointsNum = 0):
         # will tune model parameters, if 'initalPointsNum' specified, will define initial parameters, otherwise, will use pre-defined initial parameters
 
-        self.logger.info("Training process starts")
+        self.logger.info("Tuning process starts")
         start = time()
 
         if initalPointsNum == 0:
@@ -78,7 +77,7 @@ class AutoTuner:
                         random_state = 42
                      )
 
-        self.logger.info(f"Training process completed in {(time() - start) / 60} min with results: {list(result.x)}")
+        self.logger.info(f"Tuning process completed in {(time() - start) / 60} min with results ( {result.fun} : {list(result.x)} )")
         return result
 
 class Param:

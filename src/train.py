@@ -38,6 +38,7 @@ VECTOR_SIZE = 7
 ALPHA_INIT = 0.05
 ALPHA_FINAL = 0.00001
 
+
 def createModel(**kwargs):
     model = Model(
                 vector_size = VECTOR_SIZE,
@@ -48,8 +49,8 @@ def createModel(**kwargs):
             )
     #manager.cacheAdapter.reset()
     #manager.clearData()
-    model.trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD()
-    model.testCorpus = CorpusFactory.createFlatTestCorpus_02_04_25_GOOD()
+    model.trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD(50)
+    model.testCorpus = CorpusFactory.createFlatTestCorpus_02_04_25_GOOD(10)
 
     return model
 
@@ -66,10 +67,10 @@ def main():
     start = time()
     parameters = [
         Param(_name = "window",    _type = Integer,  _range = (5, 10),      _initial = 7),
-        Param(_name = "min_count", _type = Integer,  _range = (7, 13),      _initial = 7),
-        Param(_name = "epochs",    _type = Integer,  _range = (25, 45),     _initial = 25),
+        Param(_name = "min_count", _type = Integer,  _range = (1, 3),      _initial = 1), # 7 (7, 13)
+        Param(_name = "epochs",    _type = Integer,  _range = (2, 5),     _initial = 5),
         Param(_name = "negative",  _type = Integer,  _range = (5, 11),      _initial = 5),
-        Param(_name = "sample",    _type = Real,     _range = (1e-6, 1e-5), _initial = 1e-5),
+        Param(_name = "sample",    _type = Real,     _range = (1e-6, 1e-5), _initial = 1e-6), #1e-6
     ]
 
     tuner = AutoTuner(createModel, parameters)
@@ -80,7 +81,7 @@ def main():
         tuner.logger.info(f"\nAutotuner object created successfully with parameters: {[p.name for p in parameters]}\n")
         tuner.logger.info("Starting process of autotunning...\n")
     
-        results = tuner.tune(1)
+        results = tuner.tune(2)
 
         end = time()
         tuner.logger.info(f"\n\nProcess completed in {(end - start) / 60} min\n")
@@ -92,21 +93,13 @@ def main():
     except Exception as exp:
         tuner.logger.error(f"Error occured, last best performance score was {Model.bestScore} with parameters {Model.bestParameters}\n")
         tuner.logger.error(str(exp))
+        print("Error occured")
         exit(1)
 
     finally:
         saveModel(tuner.model) # saving model upon completion or in case of error
 
-if __name__ == "__main__":
-    """
-    logging.basicConfig(
-        filename=TUNER_LOG_PATH,
-        format='%(asctime)s : %(levelname)s : %(message)s',
-        level=logging.INFO
-    )
-    """
-    # TODO: add logic to log only my messages into the main log file; training progresess should be logged somewhere else, PS: probably should change 'AutoTuner' class
-
+if __name__ == "__main__":    
     AutoTuner.configLogger(TUNER_LOG_PATH)
     Model.configLogger(TRAINING_LOG_PATH)
 
