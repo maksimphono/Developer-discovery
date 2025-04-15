@@ -52,6 +52,18 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         model.corpus = cls.corpus
 
         return model
+
+    @classmethod
+    def configLogger(cls, path):
+        logger = logging.getLogger("gensim.models.doc2vec")  # Unique name
+        logger.setLevel(logging.INFO)
+        handler = logging.FileHandler(path)
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
+        return logging.getLogger("gensim.models.doc2vec")
+
     
     def __init__(self, dm_dbow_mode = "DM", pretrain_w2v = False, alpha_init = 0.05, alpha_final = 0.001, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -61,6 +73,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         self.alphaFinal = alpha_final
         self.dmDbowMode = dm_dbow_mode
         self.pretrainW2V = pretrain_w2v
+        self.logger = logging.getLogger("gensim.models.doc2vec")
     
     def train(self):
         # will build vocabulary and train the model on trainset (trainset will be fed by corpus)
@@ -71,7 +84,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
 
         start = time()
         self.build_vocab(self.trainCorpus)
-        logging.info(f"\nVocabulary built in {time() - start} s\n")
+        self.logger.info(f"\nVocabulary built in {time() - start} s\n")
 
         if self.dmDbowMode != "DM+DBOW":
             start = time()
@@ -82,7 +95,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
                 start_alpha = self.alphaInit,
                 end_alpha = self.alphaFinal
             )
-            logging.info(f"\nTraining is completed in {time() - start} s\n")
+            self.logger.info(f"\nTraining is completed in {time() - start} s\n")
         else:
             # combine DM and DBOW
             pass
@@ -146,7 +159,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
 
             i += 1
 
-        logging.info(f"Testing completed in {time() - start} s")
+        self.logger.info(f"Testing completed in {time() - start} s")
         return np.mean(f1Scores)
 
     def assess(self, sampleNum = 5, silent = False, format = "full", random_state = None):
@@ -223,4 +236,4 @@ class Model(gensim.models.doc2vec.Doc2Vec):
             for name, attr in self.__getstate__().items():
                 print(f"{name} {attr}", file = f)
 
-        logging.info(f"Model saved into {fname}")
+        self.logger.info(f"Model saved into {fname}")

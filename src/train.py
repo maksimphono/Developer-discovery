@@ -23,8 +23,9 @@ from src.Doc2Vec_model import Model
 CACHE_FILE_NAME = "cache__02-04-2025__(good)_{0}.json"
 
 MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/15-04-25_Doc2Vec.model"
-RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/09-04-25_evaluatuin.result"
-LOG_PATH = "/home/trukhinmaksim/src/logs/09-04-25_autotunning.log"
+RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/15-04-25_evaluatuin.result"
+TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/15-04-25_autotunning.log"
+TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/15-04-25_training.log"
 
 
 adapter = createAdapter_02_04_25_GOOD()#JSONMultiFileAdapter(CACHE_FILE_NAME)
@@ -50,8 +51,6 @@ def createModel(**kwargs):
     model.trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD()
     model.testCorpus = CorpusFactory.createFlatTestCorpus_02_04_25_GOOD()
 
-    logging.info(f"\nModel created with parameters {kwargs}\n")
-
     return model
 
 def saveModel(model):
@@ -59,14 +58,11 @@ def saveModel(model):
     #cTs = model.testCorpus
     model.trainCorpus = None
     model.testCorpus = None
-    model.save(MODEL_SAVING_FILE)
-
-
+    model.save(MODEL_SAVING_PATH)
 
 # autotunning model parameters
 
 def main():
-    logging.info("Welcome!")
     start = time()
     parameters = [
         Param(_name = "window",    _type = Integer,  _range = (5, 10),      _initial = 7),
@@ -80,33 +76,39 @@ def main():
 
     try:
         # danger zone! Progress must be saved if error occure
-        logging.info(f"\nAutotuner object created successfully with parameters: {[p.name for p in parameters]}\n")
-        logging.info("Starting process of autotunning...\n")
+        tuner.logger.info("Welcome!")
+        tuner.logger.info(f"\nAutotuner object created successfully with parameters: {[p.name for p in parameters]}\n")
+        tuner.logger.info("Starting process of autotunning...\n")
     
-        results = tuner.tune(2)
+        results = tuner.tune(1)
 
         end = time()
-        logging.info(f"\n\nProcess completed in {(end - start) / 60} min\n")
-        logging.info(f"Found best evaluation value {results.fun} with parameters: {results.x}\n")
+        tuner.logger.info(f"\n\nProcess completed in {(end - start) / 60} min\n")
+        tuner.logger.info(f"Found best evaluation value {results.fun} with parameters: {results.x}\n")
 
         with open(RESULTS_RECORD_PATH, "w") as file:
             print(results, file = file)
     
     except Exception as exp:
-        logging.error(f"Error occured, last best performance score was {Model.bestScore} with parameters {Model.bestParameters}\n")
-        logging.error(str(exp))
+        tuner.logger.error(f"Error occured, last best performance score was {Model.bestScore} with parameters {Model.bestParameters}\n")
+        tuner.logger.error(str(exp))
         exit(1)
 
     finally:
         saveModel(tuner.model) # saving model upon completion or in case of error
 
 if __name__ == "__main__":
+    """
     logging.basicConfig(
-        filename=LOG_PATH,
+        filename=TUNER_LOG_PATH,
         format='%(asctime)s : %(levelname)s : %(message)s',
         level=logging.INFO
     )
+    """
     # TODO: add logic to log only my messages into the main log file; training progresess should be logged somewhere else, PS: probably should change 'AutoTuner' class
+
+    AutoTuner.configLogger(TUNER_LOG_PATH)
+    Model.configLogger(TRAINING_LOG_PATH)
 
     main()
     exit(0)
