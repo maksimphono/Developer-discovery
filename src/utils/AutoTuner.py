@@ -8,6 +8,7 @@ from skopt.space import Real, Integer
 from skopt import gp_minimize
 from skopt.plots import plot_convergence
 import matplotlib.pyplot as plt
+import logging
 
 
 class AutoTuner:
@@ -15,15 +16,29 @@ class AutoTuner:
     # underlying model must contain method "evaluate" for easy evaluation
     EXP_MISSING_METHOD_EVALUATE = Exception("Please define method 'evaluate() -> float' in the target model class")
 
+    @classmethod
+    def configLogger(cls, path):
+        logger = logging.getLogger(__name__ + '.AutoTuner')  # Unique name
+        logger.setLevel(logging.INFO)
+        handler = logging.FileHandler(path)
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter_a)
+        logger.addHandler(handler_a)
+
+        return logging.getLogger(__name__ + '.AutoTuner')
+
     def __init__(self, modelConstructor, parameters : dict = dict()):
         self.modelConstructor = modelConstructor
         self.parameters = [*parameters]
         self.valuesSpace = [parameter.type(parameter.range[0], parameter.range[1], prior = parameter.prior, name = parameter.name) for parameter in self.parameters]
         self.model = None # will be created later during tunining process
+        self.logger = logging.getLogger(__name__ + '.AutoTuner')
+
 
         # check if the constructed model object has method 'evaluate'
         model = self.modelConstructor(**{p.name : p.initial for p in self.parameters})
         if not hasattr(model, "evaluate"): raise AutoTuner.EXP_MISSING_METHOD_EVALUATE
+
 
 
     def objective(self, params):
