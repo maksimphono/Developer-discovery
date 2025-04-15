@@ -1,14 +1,18 @@
-from consts import *
+try:
+    from consts import *
+except ModuleNotFoundError:
+    # codee is used by a side process (not run as a main process)
+    from src.data_processing.consts import *
 import os
 import json
 from copy import deepcopy
 import re
 from pymongo import MongoClient
 
-SCANNED_FILES_LIST_PATH = "/home/trukhinmaksim/Maksim/学习/Thesis/code/docker/container/src/data_processing/read_files_list.txt"
-USER_PROFILES_PATH = "/home/trukhinmaksim/Maksim/学习/Thesis/data/user_profiles"
-USER_PROJ_PARTICIPATE_PATH = "/home/trukhinmaksim/Maksim/学习/Thesis/data/user_proj_participate"
-OUTPUT_DIRECTORY = "/home/trukhinmaksim/Maksim/学习/Thesis/data/output"
+SCANNED_FILES_LIST_PATH = "/home/trukhinmaksim/src/src/data_processing/read_files_list.txt"
+USER_PROFILES_PATH = "/home/trukhinmaksim/src/data/user_profiles"
+USER_PROJ_PARTICIPATE_PATH = "/home/trukhinmaksim/src/data/user_proj_participate"
+OUTPUT_DIRECTORY = "/home/trukhinmaksim/src/data/output"
 
 MY_DB_LINK = "mongodb://localhost:27020/"
 USER_PROFILES_IGNORE_LIST = []
@@ -88,15 +92,18 @@ class Stats:
         self.stats["total_proj_number"] += len(projects_db)
 
     def logFinal(self):
-        self.log(f"\nTotal users number scanned: {self.stats["total_user_number"]}")
-        self.log(f"Total projects number scanned: {self.stats["total_proj_number"]}")
-        self.log(f"\tScanned CSV files:\n\t\t{str(ScannedFilesManager.scannedFilesNames)}")
+        self.log(f'\nTotal users number scanned: {self.stats["total_user_number"]}')
+        self.log(f'Total projects number scanned: {self.stats["total_proj_number"]}')
+        self.log(f'\tScanned CSV files:\n\t\t{str(ScannedFilesManager.scannedFilesNames)}')
         self.log("END")
         self.flash()
 
 
 class ScannedFilesManager:
     scannedFilesNames = []
+    scannedInSession = [] # used as buffer, every time files are scanned, it keep track of them, then saves the list and get cleared
+    updateFrequency = 1 # will write list of scanned files names into the file every Nth file (default 5)
+
     @classmethod
     def get(cls) -> list:
         with open(SCANNED_FILES_LIST_PATH, encoding="utf-8") as file:
@@ -107,13 +114,19 @@ class ScannedFilesManager:
     @classmethod
     def update(cls):
         # writes all scanned files names from the array to the file
-        with open(SCANNED_FILES_LIST_PATH, "w", encoding="utf-8") as file:
-            for filePath in cls.scannedFilesNames:
-                print(filePath, file = file)
+        with open(SCANNED_FILES_LIST_PATH, "a+", encoding="utf-8") as file:
+            for fileName in cls.scannedInSession:
+                print(fileName, file = file)
+
+            cls.scannedInSession.clear()
 
     @classmethod
     def add(cls, name):
         cls.scannedFilesNames.append(name)
+        cls.scannedInSession.append(name)
+
+        if len(cls.scannedInSession) == cls.updateFrequency:
+            cls.update()
 
 
 class UserDataCreator:
@@ -171,20 +184,25 @@ class ProjectDataCreator:
 
         return {"proj_id" : proj_id, "users" : list()}
 
-def readCSVDatabase(priorityFiles = [], limit = 2) -> str:
+def readCSVDatabase(priorityFiles = list(), limit = 2, skipLines = dict()) -> str:
     ALLOWED_USER_TYPES = ["A", "B"]
     count = 0
     filesNames = []
     # read data about users from the the CSV file
 
     def readFile(root, fileName):
-        nonlocal count, filesNames
+        nonlocal filesNames
         print("Reading file ", fileName)
         filesNames.append(fileName)
         evaluationProjectObj = ProjectDataCreator.createEvaluationProject(fileName)
 
         with open(os.path.join(root, fileName), encoding="utf-8") as file:
-            file.readline()
+            if fileName in skipLines:
+                for i in range(skipLines[fileName] - 1): file.readline()
+                print(f"Skipped {skipLines[fileName]} lines for file {fileName}")
+            else:
+                file.readline()
+
             lines = file.readlines()
             for userData in filter(lambda user: user["type"] in ALLOWED_USER_TYPES, map(UserDataCreator.fromCSV, lines)):
                 users_db[userData["id"]] = userData
@@ -193,13 +211,13 @@ def readCSVDatabase(priorityFiles = [], limit = 2) -> str:
 
         evaluation_projects_db[evaluationProjectObj["proj_id"]] = evaluationProjectObj
         ScannedFilesManager.add(fileName)
-        count += 1
 
     # read priority files first 
     for fileName in priorityFiles:
         if count >= limit: break
         if fileName not in USER_PROFILES_IGNORE_LIST and fileName not in ScannedFilesManager.scannedFilesNames:
             readFile(USER_PROFILES_PATH, fileName)
+            count += 1
 
     # read other files
     for root, dirs, files in os.walk(USER_PROFILES_PATH):
@@ -207,6 +225,7 @@ def readCSVDatabase(priorityFiles = [], limit = 2) -> str:
             if count >= limit: break
             if fileName not in USER_PROFILES_IGNORE_LIST and fileName not in ScannedFilesManager.scannedFilesNames:
                 readFile(root, fileName)
+                count += 1
 
         # don't need to go through subdirectories
     return filesNames
@@ -241,6 +260,7 @@ def readJSONDatabase(filesNamesToRead):
                         if id not in projects_db:
                             projects_db[id] = deepcopy(projData)
 
+    return users_db
 
 def saveDatabases():
     users_db.save()
@@ -250,6 +270,48 @@ def saveDatabases():
     users_db.clear()
     projects_db.clear()
     evaluation_projects_db.clear()
+
+PRIORITY_CSV_FILES = [
+    "user_profiles_github_23mf_react-native-translucent-modal.csv",
+    "user_profiles_github_2017398956_react-native-textinput-maxlength-fixed.csv",
+    "user_profiles_github_a7ul_react-native-exception-handler.csv",
+    "user_profiles_github_afollestad_material-dialogs.csv"
+]
+
+def scanUsersFromOneCSV(priorityFiles = PRIORITY_CSV_FILES):
+    # will scan all users from a single CSV file in order to update 'users_db'
+    filesNames = readCSVDatabase(priorityFiles, 1, {"user_profiles_github_tesseract-ocr_tesseract.csv" : 23410})
+    readJSONDatabase(map(lambda fn: fn.replace(".csv", ".json"), filesNames))
+
+
+class UsersCollection:
+    def __init__(self, totalAmount, priorityFiles):
+        # will scan at least totalAmount users (not exactly) because each file contains different amount of users
+        ScannedFilesManager.get()
+        self.totalAmount = totalAmount
+        self.priorityFiles = priorityFiles
+        scanUsersFromOneCSV(self.priorityFiles)
+        self.innerUserCounter = len(users_db)
+
+    def find(self):
+        # will yield one user at a time
+
+        while True:
+            for user in users_db.values():
+                yield deepcopy(user)
+
+            users_db.clear()
+
+            if self.innerUserCounter < self.totalAmount:
+                # once the user_db is empty and amount of scanned users hasn't reach thee limit -> scan more users
+                scanUsersFromOneCSV(self.priorityFiles)
+                self.innerUserCounter += len(users_db)
+            else:
+                # all files scanned
+                print("scanned")
+                ScannedFilesManager.update()
+                break
+        
 
 
 def getScannedFiles():
@@ -287,4 +349,4 @@ def main():
     stats.logFinal()
 
 
-main()
+#main()
