@@ -13,6 +13,7 @@ def flatternData(data : dict[str, list]) -> np.array(dict):
 
 
 def normalize(vec):
+    print(vec)
     norm = np.linalg.norm(vec)
     if norm == 0:
         return vec

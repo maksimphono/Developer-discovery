@@ -31,17 +31,22 @@ class EXP_MANAGER_IS_NONE(Exception):
 
 
 class AnnoySearcher(AnnoyIndex):
-    def __init__(self, vectors, numTrees = 20, distanceType = "angular"):
-        super().__init__(vectors[0].size, distanceType)
+    @classmethod
+    def create(cls, vectors, numTrees = 20, distanceType = "angular"):
+        obj = cls(vectors[0].size, distanceType)
+
         normalized = [normalize(v) for v in vectors]
 
         for i, vec in enumerate(normalized):
-            self.add_item(i, vec)
+            obj.add_item(i, vec)
 
-        self.build(numTrees)
+        obj.build(numTrees)
+        return obj
+
 
     def selectKmostSimilar(self, vector, k):
         return self.get_nns_by_vector(normalize(vector), k, search_k=-1, include_distances=False)
+
 
 
 class Model(gensim.models.doc2vec.Doc2Vec):
@@ -117,9 +122,6 @@ class Model(gensim.models.doc2vec.Doc2Vec):
             # combine DM and DBOW
             pass
 
-    def normalize(self, vectors):
-        return np.array([normalize(v) for v in vectors])
-
 
     def selectKmostSimilar(self, vector, k):
         simsIndexes = [(0, -np.inf)] # works like monotonic stack, projects with higher score are pushed higher (closer to the end)
@@ -137,18 +139,20 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         return results
 
     def test(self, k = 9):
-        start = time()
         f1Scores = []
         i = 0
 
-        searcher = AnnoySearcher(self.dv.vectors)
+        searcher = AnnoySearcher.create(self.dv.vectors)
 
         self.trainCorpus.onlyID = False # for testing all tags are needed
 
+        start = time()
         for query in self.testCorpus:
             vector = self.infer_vector(query.words)
+            #topK = searcher.get_nns_by_vector(normalize(vector), k, search_k=-1, include_distances=False)
             topK = sorted(searcher.selectKmostSimilar(vector, k))
-            #topK = sorted(self.selectKmostSimilar(vector, k), key = lambda pair: pair[0])
+            #topK = [p[0] for p in sorted(self.selectKmostSimilar(vector, k), key = lambda pair: pair[0])]
+            print(topK)
 
             predictedRelevant = np.ones(k)
             trueRelevant = self.checkRelevants(topK, query.tags)
