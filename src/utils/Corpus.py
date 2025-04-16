@@ -109,20 +109,21 @@ class FlatCorpus(Corpus):
 
     def __getitem__(self, _indexes):
         results = []
-        indexes = [*_indexes] # '_indexes' must be sorted
+        indexes = [*_indexes] # !note: '_indexes' must be sorted
 
         self.reset()
-        i = 0
-        for doc in self:
+        #i = 0
+        for i, doc in enumerate(self):
             if len(indexes) == 0: break
             if i == indexes[0]:
                 results.append(doc)
                 indexes.pop(0) # move to the next index
 
-            i += 1
+            #i += 1
 
         self.reset()
         return results
+
 
 from src.utils.CacheAdapter import createTestSetAdapter_02_04_25_GOOD, createTrainSetAdapter_02_04_25_GOOD
 

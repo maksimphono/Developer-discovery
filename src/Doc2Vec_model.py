@@ -50,8 +50,6 @@ class AnnoySearcher(AnnoyIndex):
 
 
 class Model(gensim.models.doc2vec.Doc2Vec):
-    manager = None
-    corpus = None
     bestParameters = None
     bestScore = 0
 
@@ -60,17 +58,16 @@ class Model(gensim.models.doc2vec.Doc2Vec):
     ALPHA_FINAL = 0.00001
 
     @classmethod
-    def create(cls, **kwargs):
+    def create(cls, trainCorpus, testCorpus, **kwargs):
         model = Model(
                 vector_size = cls.VECTOR_SIZE,
-                dm_dbow_mode = "DM", 
+                dm_dbow_mode = "DM",
                 alpha_init = cls.ALPHA_INIT,
                 alpha_final = cls.ALPHA_FINAL,
                 **kwargs
             )
-        cls.manager.cacheAdapter.reset()
-        cls.manager.clearData()
-        model.corpus = cls.corpus
+        model.trainCorpus = trainCorpus
+        model.testCorpus = testCorpus
 
         return model
 
