@@ -180,9 +180,13 @@ class DBFlatAdapter(CacheAdapter):
 
         return result
 
+    def __getitem__(self, indexes : list = list()):
+        return self.cacheCollection.find({'index': {'$in': indexes}}).sort('index', 1)
+
+
     def save(self, data):
         preparedData = {
-            "index" : self.size + 1,
+            "index" : self.size,
             "tokens" : list(data["tokens"]),
             "tags" : list(data["tags"])
         }
@@ -196,14 +200,26 @@ CACHE_02_04_25_GOOD_TMPLT = "/home/trukhinmaksim/src/data/cache_02-04-25/cache__
 TRAIN_CACHE_02_04_25_GOOD = "/home/trukhinmaksim/src/data/train_02-04-25/train_02-04-25"
 TEST_CACHE_02_04_25_GOOD = "/home/trukhinmaksim/src/data/train_02-04-25/test_02-04-25"
 
+
+#@classmethod
 def createAdapter_02_04_25_GOOD(*args, **kwargs):
     return JSONMultiFileAdapter(baseName = CACHE_02_04_25_GOOD_TMPLT, *args, **kwargs)
 
+#@classmethod
 def createTrainSetAdapter_02_04_25_GOOD():
     return FlatAdapter(TRAIN_CACHE_02_04_25_GOOD)
 
+#@classmethod
 def createTestSetAdapter_02_04_25_GOOD():
     return FlatAdapter(TEST_CACHE_02_04_25_GOOD)
 
+#@classmethod
 def createNormAdapter_02_04_25_GOOD():
     return FlatAdapter("/home/trukhinmaksim/src/data/normalized_02-04-25_(good)/normalized_02-04-25_(good)")
+
+#@classmethod
+def createTrainSetDBadepter():
+    pass
+
+def createTestSetDBadepter():
+    pass
