@@ -21,6 +21,7 @@ class CacheAdapter:
     def save(self, data):
         return {}
 
+
 class FlatAdapter(CacheAdapter):
     # items (json objects) are written on each line of that file, one line = one json object
     def __init__(self, collectionName = "", *args, **kwargs):
@@ -156,24 +157,39 @@ class JSONMultiFileAdapter(JSONAdapter):
         super().save(data)
         self.saveCounter += 1
 
-class DBAdapter(CacheAdapter):
-    def __init__(self, cacheCollection, ignoreList):
-        super().__init__(self)
+class DBFlatAdapter(CacheAdapter):
+    def __init__(self, cacheCollection):
+        super().__init__("")
         self.cacheCollection = cacheCollection
-        self.ignoreList = ignoreList
-    
-    def load(self, amount = float("inf")):
-        count = amount
-        cursor = self.cacheCollection.find()
-        result = {}
-        
-        for user in cursor:
-            if count <= 0: break
-            if user["id"] in self.ignoreList: continue
+        self.readCursor = self.cacheCollection.find()
+        self.size = self.cacheCollection.count_documents({})
 
-            result[user["id"]] = user["tokenized_projects"]
+    def reset(self):
+        self.readCursor = self.cacheCollection.find()
+
+    def load(self, amount = 25):
+        result = []
+
+        count = 0
+        for doc in self.readCursor:
+            if count >= amount: break
+
+            result.append(doc)
+
+            count += 1
 
         return result
+
+    def save(self, data):
+        preparedData = {
+            "index" : self.size + 1,
+            "tokens" : list(data["tokens"]),
+            "tags" : list(data["tags"])
+        }
+        self.cacheCollection.insert_one(preparedData)
+        self.size += 1
+
+        return preparedData
 
 
 CACHE_02_04_25_GOOD_TMPLT = "/home/trukhinmaksim/src/data/cache_02-04-25/cache__02-04-2025__(good)_{0}.json"
