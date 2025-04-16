@@ -3,6 +3,8 @@ import json
 from itertools import islice
 import logging
 
+from src.utils.DatabaseConnect import CacheConnector_02_04_25
+
 PREPROCESSED_DATA_CACHE_PATH = "/home/trukhinmaksim/src/data/train_02-04-25"
 
 class EXP_END_OF_DATA(Exception):
@@ -167,26 +169,26 @@ class DBFlatAdapter(CacheAdapter):
     def reset(self):
         self.readCursor = self.cacheCollection.find()
 
+    def __getitem__(self, indexes : list = list()):
+        return list(self.cacheCollection.find({"order": {'$in': indexes}}, {"_id" : False, "order" : False}).sort("order", 1))
+
     def load(self, amount = 25):
         result = []
 
-        count = 0
-        for doc in self.readCursor:
-            if count >= amount: break
+        for count in range(amount):
+            try:
+                doc = next(self.readCursor)
+            except StopIteration:
+                raise EXP_END_OF_DATA
 
             result.append(doc)
 
-            count += 1
-
         return result
-
-    def __getitem__(self, indexes : list = list()):
-        return self.cacheCollection.find({'index': {'$in': indexes}}).sort('index', 1)
 
 
     def save(self, data):
         preparedData = {
-            "index" : self.size,
+            "order" : self.size,
             "tokens" : list(data["tokens"]),
             "tags" : list(data["tags"])
         }
@@ -199,7 +201,7 @@ class DBFlatAdapter(CacheAdapter):
 CACHE_02_04_25_GOOD_TMPLT = "/home/trukhinmaksim/src/data/cache_02-04-25/cache__02-04-2025__(good)_{0}.json"
 TRAIN_CACHE_02_04_25_GOOD = "/home/trukhinmaksim/src/data/train_02-04-25/train_02-04-25"
 TEST_CACHE_02_04_25_GOOD = "/home/trukhinmaksim/src/data/train_02-04-25/test_02-04-25"
-
+DB_LINK = "mongodb://192.168.43.146:27020/"
 
 #@classmethod
 def createAdapter_02_04_25_GOOD(*args, **kwargs):
@@ -218,8 +220,12 @@ def createNormAdapter_02_04_25_GOOD():
     return FlatAdapter("/home/trukhinmaksim/src/data/normalized_02-04-25_(good)/normalized_02-04-25_(good)")
 
 #@classmethod
-def createTrainSetDBadepter():
-    pass
+def createTrainSetDBadepter_02_04_25_GOOD():
+    connector = CacheConnector_02_04_25(DB_LINK)
+    collection = connector.train_02_04_25
+    return DBFlatAdapter(collection)
 
-def createTestSetDBadepter():
-    pass
+def createTestSetDBadepter_02_04_25_GOOD():
+    connector = CacheConnector_02_04_25(DB_LINK)
+    collection = connector.test_02_04_25
+    return DBFlatAdapter(collection)
