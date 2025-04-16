@@ -34,7 +34,7 @@ corpus = CacheCorpus(manager, 100)
 
 # creating model
 
-VECTOR_SIZE = 7
+VECTOR_SIZE = 200
 ALPHA_INIT = 0.05
 ALPHA_FINAL = 0.00001
 
@@ -49,8 +49,8 @@ def createModel(**kwargs):
             )
     #manager.cacheAdapter.reset()
     #manager.clearData()
-    model.trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD(50)
-    model.testCorpus = CorpusFactory.createFlatTestCorpus_02_04_25_GOOD(10)
+    model.trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD()
+    model.testCorpus = CorpusFactory.createFlatTestCorpus_02_04_25_GOOD()
 
     return model
 
@@ -67,10 +67,10 @@ def main():
     start = time()
     parameters = [
         Param(_name = "window",    _type = Integer,  _range = (5, 10),      _initial = 7),
-        Param(_name = "min_count", _type = Integer,  _range = (1, 3),      _initial = 1), # 7 (7, 13)
-        Param(_name = "epochs",    _type = Integer,  _range = (2, 5),     _initial = 5),
-        Param(_name = "negative",  _type = Integer,  _range = (5, 11),      _initial = 5),
-        Param(_name = "sample",    _type = Real,     _range = (1e-6, 1e-5), _initial = 1e-6), #1e-6
+        Param(_name = "min_count", _type = Integer,  _range = (7, 13),      _initial = 7),
+        Param(_name = "epochs",    _type = Integer,  _range = (30, 45),     _initial = 35),
+        Param(_name = "negative",  _type = Integer,  _range = (5, 13),      _initial = 5),
+        Param(_name = "sample",    _type = Real,     _range = (1e-6, 1e-5), _initial = 1e-5),
     ]
 
     tuner = AutoTuner(createModel, parameters)
@@ -81,7 +81,7 @@ def main():
         tuner.logger.info(f"\nAutotuner object created successfully with parameters: {[p.name for p in parameters]}\n")
         tuner.logger.info("Starting process of autotunning...\n")
     
-        results = tuner.tune(2)
+        results = tuner.tune(21)
 
         end = time()
         tuner.logger.info(f"\n\nProcess completed in {(end - start) / 60} min\n")
@@ -89,7 +89,7 @@ def main():
 
         with open(RESULTS_RECORD_PATH, "w") as file:
             print(results, file = file)
-    
+
     except Exception as exp:
         tuner.logger.error(f"Error occured, last best performance score was {Model.bestScore} with parameters {Model.bestParameters}\n")
         tuner.logger.error(str(exp))
