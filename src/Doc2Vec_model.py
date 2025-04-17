@@ -146,10 +146,8 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         start = time()
         for query in self.testCorpus:
             vector = self.infer_vector(query.words)
-            #topK = searcher.get_nns_by_vector(normalize(vector), k, search_k=-1, include_distances=False)
             topK = sorted(searcher.selectKmostSimilar(vector, k))
             #topK = [p[0] for p in sorted(self.selectKmostSimilar(vector, k), key = lambda pair: pair[0])]
-            print(topK)
 
             predictedRelevant = np.ones(k)
             trueRelevant = self.checkRelevants(topK, query.tags)
