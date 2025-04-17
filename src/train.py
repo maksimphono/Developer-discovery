@@ -34,14 +34,13 @@ corpus = CacheCorpus(manager, 100)
 
 # creating model
 
-VECTOR_SIZE = 7
+#VECTOR_SIZE = 200
 ALPHA_INIT = 0.05
 ALPHA_FINAL = 0.00001
 
 
 def createModel(**kwargs):
     model = Model(
-                vector_size = VECTOR_SIZE,
                 dm_dbow_mode = "DM", 
                 alpha_init = ALPHA_INIT,
                 alpha_final = ALPHA_FINAL,
@@ -66,11 +65,12 @@ def saveModel(model):
 def main():
     start = time()
     parameters = [
-        Param(_name = "window",    _type = Integer,  _range = (5, 10),      _initial = 7),
-        Param(_name = "min_count", _type = Integer,  _range = (1, 3),      _initial = 1), # 7 (7, 13)
-        Param(_name = "epochs",    _type = Integer,  _range = (2, 5),     _initial = 5),
-        Param(_name = "negative",  _type = Integer,  _range = (5, 11),      _initial = 5),
-        Param(_name = "sample",    _type = Real,     _range = (1e-6, 1e-5), _initial = 1e-6), #1e-6
+        Param(_name = "vector_size", _type = Integer,  _range = (180, 210),   _initial = 185),
+        Param(_name = "window",      _type = Integer,  _range = (5, 10),      _initial = 7),
+        Param(_name = "min_count",   _type = Integer,  _range = (7, 13),      _initial = 7),
+        Param(_name = "epochs",      _type = Integer,  _range = (30, 45),     _initial = 35),
+        Param(_name = "negative",    _type = Integer,  _range = (5, 13),      _initial = 5),
+        Param(_name = "sample",      _type = Real,     _range = (1e-6, 1e-5), _initial = 1e-5),
     ]
 
     tuner = AutoTuner(createModel, parameters)
