@@ -108,24 +108,10 @@ class FlatCorpus(Corpus):
         self.reset()
 
     def __getitem__(self, _indexes):
-        results = []
-        indexes = [*_indexes] # !note: '_indexes' must be sorted
-
-        self.reset()
-        #i = 0
-        for i, doc in enumerate(self):
-            if len(indexes) == 0: break
-            if i == indexes[0]:
-                results.append(doc)
-                indexes.pop(0) # move to the next index
-
-            #i += 1
-
-        self.reset()
-        return results
+        return [TaggedDocument(words = doc["tokens"], tags = doc["tags"]) for doc in self.adapter[_indexes]]
 
 
-from src.utils.CacheAdapter import createTestSetAdapter_02_04_25_GOOD, createTrainSetAdapter_02_04_25_GOOD
+from src.utils.CacheAdapter import createTestSetAdapter_02_04_25_GOOD, createTrainSetAdapter_02_04_25_GOOD, createTrainSetDBadepter_02_04_25_GOOD, createTestSetDBadepter_02_04_25_GOOD
 
 class Factory:
     @classmethod
@@ -136,4 +122,14 @@ class Factory:
     @classmethod
     def createFlatTestCorpus_02_04_25_GOOD(cls, limit = np.inf):
         adapter = createTestSetAdapter_02_04_25_GOOD()
+        return FlatCorpus(adapter, limit = limit)
+
+    @classmethod
+    def createFlatTrainDBCorpus_02_04_25_GOOD(cls, limit = np.inf):
+        adapter = createTrainSetDBadepter_02_04_25_GOOD()
+        return FlatCorpus(adapter, limit = limit)
+
+    @classmethod
+    def createFlatTestDBCorpus_02_04_25_GOOD(cls, limit = np.inf):
+        adapter = createTestSetDBadepter_02_04_25_GOOD()
         return FlatCorpus(adapter, limit = limit)

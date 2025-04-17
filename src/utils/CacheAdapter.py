@@ -46,6 +46,25 @@ class FlatAdapter(CacheAdapter):
     def reset(self):
         self.resetRead()
 
+    def __getitem__(self, _indexes = list()):
+        # iterative approach: traverse through entire adapter in search of these indexes
+        results = []
+        indexes = [*_indexes] # !note: '_indexes' must be sorted
+
+        self.reset()
+        i = 0
+        line = ""
+        while line := self.readFp.readline():
+            if len(indexes) == 0: break
+            if i == indexes[0]:
+                results.append(json.loads(line))
+                indexes.pop(0) # move to the next index
+
+            i += 1
+
+        self.reset()
+        return results
+
     def load(self, amount = 25):
         docs = []
 
@@ -236,6 +255,7 @@ def createTrainSetDBadepter_02_04_25_GOOD():
     collection = connector.train_02_04_25
     return DBFlatAdapter(collection)
 
+#@classmethod
 def createTestSetDBadepter_02_04_25_GOOD():
     connector = CacheConnector_02_04_25(DB_LINK)
     collection = connector.test_02_04_25
