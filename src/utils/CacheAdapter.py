@@ -53,8 +53,11 @@ class FlatAdapter(CacheAdapter):
             line = self.readFp.readline()
 
             if len(line) == 0: # empty object in the line
-                self.resetRead()
-                raise EXP_END_OF_DATA
+                if len(docs) > 0:
+                    return docs
+                else:
+                    self.resetRead()
+                    raise EXP_END_OF_DATA
 
             docs.append(json.loads(line))
 
@@ -163,11 +166,11 @@ class DBFlatAdapter(CacheAdapter):
     def __init__(self, cacheCollection):
         super().__init__("")
         self.cacheCollection = cacheCollection
-        self.readCursor = self.cacheCollection.find()
+        self.readCursor = self.cacheCollection.find(projection = {"_id" : False, "order" : False})
         self.size = self.cacheCollection.count_documents({})
 
     def reset(self):
-        self.readCursor = self.cacheCollection.find()
+        self.readCursor = self.cacheCollection.find(projection = {"_id" : False, "order" : False})
 
     def __getitem__(self, indexes : list = list()):
         return list(self.cacheCollection.find({"order": {'$in': indexes}}, {"_id" : False, "order" : False}).sort("order", 1))
@@ -179,7 +182,11 @@ class DBFlatAdapter(CacheAdapter):
             try:
                 doc = next(self.readCursor)
             except StopIteration:
-                raise EXP_END_OF_DATA
+                if len(result) > 0:
+                    return result
+                else:
+                    self.reset()
+                    raise EXP_END_OF_DATA
 
             result.append(doc)
 
@@ -187,13 +194,17 @@ class DBFlatAdapter(CacheAdapter):
 
 
     def save(self, data):
-        preparedData = {
-            "order" : self.size,
-            "tokens" : list(data["tokens"]),
-            "tags" : list(data["tags"])
-        }
-        self.cacheCollection.insert_one(preparedData)
-        self.size += 1
+        preparedData = []
+
+        for doc in data:
+            preparedData.append({
+                "order" : self.size,
+                "tokens" : list(doc["tokens"]),
+                "tags" : list(doc["tags"])
+            })
+            self.size += 1
+
+        self.cacheCollection.insert_many(preparedData)
 
         return preparedData
 
@@ -201,7 +212,7 @@ class DBFlatAdapter(CacheAdapter):
 CACHE_02_04_25_GOOD_TMPLT = "/home/trukhinmaksim/src/data/cache_02-04-25/cache__02-04-2025__(good)_{0}.json"
 TRAIN_CACHE_02_04_25_GOOD = "/home/trukhinmaksim/src/data/train_02-04-25/train_02-04-25"
 TEST_CACHE_02_04_25_GOOD = "/home/trukhinmaksim/src/data/train_02-04-25/test_02-04-25"
-DB_LINK = "mongodb://192.168.43.146:27020/"
+DB_LINK = "mongodb://10.22.16.250:27020/"
 
 #@classmethod
 def createAdapter_02_04_25_GOOD(*args, **kwargs):
