@@ -13,10 +13,12 @@ from src.utils.CacheAdapter import JSONAdapter, JSONMultiFileAdapter, EXP_END_OF
 from src.utils.DatasetManager import ProjectsDatasetManager
 from src.utils.validators import projectDataIsSufficient
 from src.utils.Corpus import Corpus
+from src.utils.helpers import normalize
 
 import gensim
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics import precision_score, recall_score, f1_score
+from annoy import AnnoyIndex
 
 
 class EXP_CORPUS_IS_NONE(Exception):
@@ -28,9 +30,26 @@ class EXP_MANAGER_IS_NONE(Exception):
         super().__init__("'Model.manager' object must be a DatasetManager instance!")
 
 
+class AnnoySearcher(AnnoyIndex):
+    @classmethod
+    def create(cls, vectors, numTrees = 20, distanceType = "angular"):
+        obj = cls(vectors[0].size, distanceType)
+
+        normalized = [normalize(v) for v in vectors]
+
+        for i, vec in enumerate(normalized):
+            obj.add_item(i, vec)
+
+        obj.build(numTrees)
+        return obj
+
+
+    def selectKmostSimilar(self, vector, k):
+        return self.get_nns_by_vector(normalize(vector), k, search_k=-1, include_distances=False)
+
+
+
 class Model(gensim.models.doc2vec.Doc2Vec):
-    manager = None
-    corpus = None
     bestParameters = None
     bestScore = 0
 
@@ -39,17 +58,16 @@ class Model(gensim.models.doc2vec.Doc2Vec):
     ALPHA_FINAL = 0.00001
 
     @classmethod
-    def create(cls, **kwargs):
+    def create(cls, trainCorpus, testCorpus, **kwargs):
         model = Model(
                 vector_size = cls.VECTOR_SIZE,
-                dm_dbow_mode = "DM", 
+                dm_dbow_mode = "DM",
                 alpha_init = cls.ALPHA_INIT,
                 alpha_final = cls.ALPHA_FINAL,
                 **kwargs
             )
-        cls.manager.cacheAdapter.reset()
-        cls.manager.clearData()
-        model.corpus = cls.corpus
+        model.trainCorpus = trainCorpus
+        model.testCorpus = testCorpus
 
         return model
 
@@ -74,6 +92,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         self.dmDbowMode = dm_dbow_mode
         self.pretrainW2V = pretrain_w2v
         self.logger = logging.getLogger("gensim.models.doc2vec")
+        self.normalizedVectors = []
     
     def train(self):
         # will build vocabulary and train the model on trainset (trainset will be fed by corpus)
@@ -100,35 +119,10 @@ class Model(gensim.models.doc2vec.Doc2Vec):
             # combine DM and DBOW
             pass
 
+
     def selectKmostSimilar(self, vector, k):
         simsIndexes = [(0, -np.inf)] # works like monotonic stack, projects with higher score are pushed higher (closer to the end)
-        query = vector.reshape(1, -1)
-
-        def insert(index, score):
-            nonlocal simsIndexes, k
-            inserted = False
-
-            # starting from 1 because that function is called only if score is higher then the 0-th element, so here isn't necessary to check it again
-            for i, pair in enumerate(simsIndexes[1:], 1):
-                if score <= pair[1]:
-                    simsIndexes.insert(i, (index, score))
-                    inserted = True
-                    break
-
-            if not inserted:
-                # if the new score is the highest
-                simsIndexes.append((index, score))
-
-            if len(simsIndexes) > k:
-                simsIndexes.pop(0)
-
-
-        for i, vec in enumerate(self.dv.vectors):
-            # traverse through all vectors, here vectors are listed in the same order as in the corpus, so I'm recoring index of each vector
-            score = cosine_similarity(query, vec.reshape(1, -1))[0][0]
-
-            if score > simsIndexes[0][1]: # if the insertation is needed in the first place
-                insert(i, score)
+        query = vector
 
         return simsIndexes
 
@@ -142,18 +136,21 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         return results
 
     def test(self, k = 9):
-        start = time()
         f1Scores = []
         i = 0
 
+        searcher = AnnoySearcher.create(self.dv.vectors)
+
         self.trainCorpus.onlyID = False # for testing all tags are needed
 
+        start = time()
         for query in self.testCorpus:
             vector = self.infer_vector(query.words)
-            topK = sorted(self.selectKmostSimilar(vector, k), key = lambda pair: pair[0])
+            topK = sorted(searcher.selectKmostSimilar(vector, k))
+            #topK = [p[0] for p in sorted(self.selectKmostSimilar(vector, k), key = lambda pair: pair[0])]
 
             predictedRelevant = np.ones(k)
-            trueRelevant = self.checkRelevants([p[0] for p in topK], query.tags)
+            trueRelevant = self.checkRelevants(topK, query.tags)
 
             f1Scores.append(f1_score(trueRelevant, predictedRelevant))
 

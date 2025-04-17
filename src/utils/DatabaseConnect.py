@@ -31,7 +31,7 @@ class DatabaseConnect:
         @classmethod
         def projects(cls):
             #print(cls.connect)
-            
+
             return cls.connect('mini_database')['projects']
         @classmethod
         def users(cls):
@@ -50,4 +50,27 @@ class WL_DatabaseConnect(DatabaseConnect):
     class mini_database:
         pass
 
-    
+
+class DatabaseConnector:
+    def __init__(self, link, dbName):
+        self.client = MongoClient(link)
+        self.dbName = dbName
+
+    def connect(self):
+        return self.client[self.dbName]
+
+    def collection(self, name):
+        return self.connect()[name]
+
+class CacheConnector(DatabaseConnector):
+    def __init__(self, link):
+        super().__init__(link, "Cache")
+
+class CacheConnector_02_04_25(CacheConnector):
+    @property
+    def train_02_04_25(self):
+        return self.collection("train_02-04-25")
+
+    @property
+    def test_02_04_25(self):
+        return self.collection("test_02-04-25")

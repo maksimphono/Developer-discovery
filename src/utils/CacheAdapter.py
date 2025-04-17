@@ -3,6 +3,8 @@ import json
 from itertools import islice
 import logging
 
+from src.utils.DatabaseConnect import CacheConnector_02_04_25
+
 PREPROCESSED_DATA_CACHE_PATH = "/home/trukhinmaksim/src/data/train_02-04-25"
 
 class EXP_END_OF_DATA(Exception):
@@ -20,6 +22,7 @@ class CacheAdapter:
 
     def save(self, data):
         return {}
+
 
 class FlatAdapter(CacheAdapter):
     # items (json objects) are written on each line of that file, one line = one json object
@@ -43,6 +46,25 @@ class FlatAdapter(CacheAdapter):
     def reset(self):
         self.resetRead()
 
+    def __getitem__(self, _indexes = list()):
+        # iterative approach: traverse through entire adapter in search of these indexes
+        results = []
+        indexes = [*_indexes] # !note: '_indexes' must be sorted
+
+        self.reset()
+        i = 0
+        line = ""
+        while line := self.readFp.readline():
+            if len(indexes) == 0: break
+            if i == indexes[0]:
+                results.append(json.loads(line))
+                indexes.pop(0) # move to the next index
+
+            i += 1
+
+        self.reset()
+        return results
+
     def load(self, amount = 25):
         docs = []
 
@@ -50,8 +72,11 @@ class FlatAdapter(CacheAdapter):
             line = self.readFp.readline()
 
             if len(line) == 0: # empty object in the line
-                self.resetRead()
-                raise EXP_END_OF_DATA
+                if len(docs) > 0:
+                    return docs
+                else:
+                    self.resetRead()
+                    raise EXP_END_OF_DATA
 
             docs.append(json.loads(line))
 
@@ -156,38 +181,82 @@ class JSONMultiFileAdapter(JSONAdapter):
         super().save(data)
         self.saveCounter += 1
 
-class DBAdapter(CacheAdapter):
-    def __init__(self, cacheCollection, ignoreList):
-        super().__init__(self)
+class DBFlatAdapter(CacheAdapter):
+    def __init__(self, cacheCollection):
+        super().__init__("")
         self.cacheCollection = cacheCollection
-        self.ignoreList = ignoreList
-    
-    def load(self, amount = float("inf")):
-        count = amount
-        cursor = self.cacheCollection.find()
-        result = {}
-        
-        for user in cursor:
-            if count <= 0: break
-            if user["id"] in self.ignoreList: continue
+        self.readCursor = self.cacheCollection.find(projection = {"_id" : False, "order" : False})
+        self.size = self.cacheCollection.count_documents({})
 
-            result[user["id"]] = user["tokenized_projects"]
+    def reset(self):
+        self.readCursor = self.cacheCollection.find(projection = {"_id" : False, "order" : False})
+
+    def __getitem__(self, indexes : list = list()):
+        return list(self.cacheCollection.find({"order": {'$in': indexes}}, {"_id" : False, "order" : False}).sort("order", 1))
+
+    def load(self, amount = 25):
+        result = []
+
+        for count in range(amount):
+            try:
+                doc = next(self.readCursor)
+            except StopIteration:
+                if len(result) > 0:
+                    return result
+                else:
+                    self.reset()
+                    raise EXP_END_OF_DATA
+
+            result.append(doc)
 
         return result
+
+
+    def save(self, data):
+        preparedData = []
+
+        for doc in data:
+            preparedData.append({
+                "order" : self.size,
+                "tokens" : list(doc["tokens"]),
+                "tags" : list(doc["tags"])
+            })
+            self.size += 1
+
+        self.cacheCollection.insert_many(preparedData)
+
+        return preparedData
 
 
 CACHE_02_04_25_GOOD_TMPLT = "/home/trukhinmaksim/src/data/cache_02-04-25/cache__02-04-2025__(good)_{0}.json"
 TRAIN_CACHE_02_04_25_GOOD = "/home/trukhinmaksim/src/data/train_02-04-25/train_02-04-25"
 TEST_CACHE_02_04_25_GOOD = "/home/trukhinmaksim/src/data/train_02-04-25/test_02-04-25"
+DB_LINK = "mongodb://10.22.16.250:27020/"
 
+#@classmethod
 def createAdapter_02_04_25_GOOD(*args, **kwargs):
     return JSONMultiFileAdapter(baseName = CACHE_02_04_25_GOOD_TMPLT, *args, **kwargs)
 
+#@classmethod
 def createTrainSetAdapter_02_04_25_GOOD():
     return FlatAdapter(TRAIN_CACHE_02_04_25_GOOD)
 
+#@classmethod
 def createTestSetAdapter_02_04_25_GOOD():
     return FlatAdapter(TEST_CACHE_02_04_25_GOOD)
 
+#@classmethod
 def createNormAdapter_02_04_25_GOOD():
     return FlatAdapter("/home/trukhinmaksim/src/data/normalized_02-04-25_(good)/normalized_02-04-25_(good)")
+
+#@classmethod
+def createTrainSetDBadepter_02_04_25_GOOD():
+    connector = CacheConnector_02_04_25(DB_LINK)
+    collection = connector.train_02_04_25
+    return DBFlatAdapter(collection)
+
+#@classmethod
+def createTestSetDBadepter_02_04_25_GOOD():
+    connector = CacheConnector_02_04_25(DB_LINK)
+    collection = connector.test_02_04_25
+    return DBFlatAdapter(collection)
