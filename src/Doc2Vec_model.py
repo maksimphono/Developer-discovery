@@ -12,7 +12,7 @@ import logging
 from src.utils.CacheAdapter import JSONAdapter, JSONMultiFileAdapter, EXP_END_OF_DATA
 from src.utils.DatasetManager import ProjectsDatasetManager
 from src.utils.validators import projectDataIsSufficient
-from src.utils.Corpus import Corpus
+from src.utils.Corpus import Corpus, CorpusFactory
 from src.utils.helpers import normalize
 
 import gensim
@@ -211,6 +211,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         # will train the model on upon-selected set of parameters and test it's performance
         self.train()
 
+        self.trainCorpus = CorpusFactory.createFlatTrainDBCorpus_02_04_25_GOOD() # for testing step I must use database adapter for better documents retreival
         #result = self.test(6000, silent = True, format = "mean", random_state = 42)
         result = self.test(k = 9)
 

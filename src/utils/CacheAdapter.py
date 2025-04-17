@@ -75,7 +75,7 @@ class FlatAdapter(CacheAdapter):
                 if len(docs) > 0:
                     return docs
                 else:
-                    self.resetRead()
+                    self.reset()
                     raise EXP_END_OF_DATA
 
             docs.append(json.loads(line))
@@ -231,7 +231,7 @@ class DBFlatAdapter(CacheAdapter):
 CACHE_02_04_25_GOOD_TMPLT = "/home/trukhinmaksim/src/data/cache_02-04-25/cache__02-04-2025__(good)_{0}.json"
 TRAIN_CACHE_02_04_25_GOOD = "/home/trukhinmaksim/src/data/train_02-04-25/train_02-04-25"
 TEST_CACHE_02_04_25_GOOD = "/home/trukhinmaksim/src/data/train_02-04-25/test_02-04-25"
-DB_LINK = "mongodb://10.22.16.250:27020/"
+DB_LINK = "mongodb://192.168.43.146:27020/"
 
 #@classmethod
 def createAdapter_02_04_25_GOOD(*args, **kwargs):
