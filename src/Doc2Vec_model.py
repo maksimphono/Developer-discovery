@@ -3,10 +3,12 @@ sys.path.append('/home/trukhinmaksim/src')
 
 import numpy as np
 import json
+import os
 from time import time
 from random import sample, seed as randomSeed
 from collections import defaultdict
 from numpy import mean
+from contextlib import redirect_stdout
 import logging
 
 from src.utils.CacheAdapter import JSONAdapter, JSONMultiFileAdapter, EXP_END_OF_DATA
@@ -139,25 +141,29 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         f1Scores = []
         i = 0
 
-        searcher = AnnoySearcher.create(self.dv.vectors)
-
-        self.trainCorpus.onlyID = False # for testing all tags are needed
-
         start = time()
-        for query in self.testCorpus:
-            vector = self.infer_vector(query.words)
-            topK = sorted(searcher.selectKmostSimilar(vector, k))
-            #topK = [p[0] for p in sorted(self.selectKmostSimilar(vector, k), key = lambda pair: pair[0])]
+        with open(os.devnull, 'w') as f:
+            with redirect_stdout(f): # redirect standard output into void, so 'annoy' doesn't print anything
+        
+                searcher = AnnoySearcher.create(self.dv.vectors)
 
-            predictedRelevant = np.ones(k)
-            trueRelevant = self.checkRelevants(topK, query.tags)
+                self.trainCorpus.onlyID = False # for testing all tags are needed
+        
+                for query in self.testCorpus:
+                    vector = self.infer_vector(query.words)
+                    topK = sorted(searcher.selectKmostSimilar(vector, k))
+                    #topK = [p[0] for p in sorted(self.selectKmostSimilar(vector, k), key = lambda pair: pair[0])]
 
-            f1Scores.append(f1_score(trueRelevant, predictedRelevant))
+                    predictedRelevant = np.ones(k)
+                    trueRelevant = self.checkRelevants(topK, query.tags)
 
-            i += 1
+                    f1Scores.append(f1_score(trueRelevant, predictedRelevant))
 
-        self.logger.info(f"Testing completed in {time() - start} s")
-        return np.mean(f1Scores)
+                    i += 1
+
+        result = np.mean(f1Scores)
+        self.logger.info(f"\nTesting completed in {time() - start} s; Result: {result}")
+        return result
 
     def assess(self, sampleNum = 5, silent = False, format = "full", random_state = None):
         # simple test of model performance
