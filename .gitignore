@@ -12,3 +12,4 @@ logs/ignoreUsers.json
 src/utils/__pycache__
 *.pyc
 results/*.result
+src/models/*
