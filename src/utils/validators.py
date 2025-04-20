@@ -19,3 +19,15 @@ def projectDataIsGood(projectData):
         ))
     except KeyError:
         return False
+
+def projectDataIsHighQuality(projectData):
+    # filters good data (has description and both topics and language, at least 15 spaces)
+    try:
+        return all((
+            projectData,
+            projectData["fork"] == False,
+            projectData["description"].count(" ") >= 15, # at least 15 spaces (hoping to find at least 16 words in the description)
+            (len(projectData["topics"]) and projectData["language"])
+        ))
+    except KeyError:
+        return False
