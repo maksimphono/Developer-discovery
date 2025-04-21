@@ -24,7 +24,7 @@ import asyncio
 import nest_asyncio
 from googletrans import Translator
 
-from src.utils.CacheAdapter import JSONAdapter
+from src.utils.CacheAdapter import JSONAdapter, CacheAdapter
 from src.data_processing.collect_projects_data import collectOneProjectData, EXP_NOT_IN_DB
 
 def downloadArgosLangPackages(langList = ["es", "pt", "zh", "zt", "ru", "de", "ja", "ko"]):
@@ -66,7 +66,6 @@ class IgnoreList(dict):
     def __iter__(self):
         for item in self.keys():
             yield item
-
 
 class ProjectsDatasetManager:
     usersCollection = None
@@ -317,24 +316,34 @@ class DatasetManager:
     EXP_INPUT_ERROR = DatasetManagerError("Input error")
     EXP_OUTPUT_ERROR = DatasetManagerError("Output error")
 
-    def __init__(self, itemsPortionNum, limit = float("inf"), inputAdapter, outputAdapters = list(), validator = lambda x: True, mapper = lambda x: x):
+    def __init__(self, itemsPortionNum, inputAdapter, outputAdapters = list(), limit = float("inf"), validator = lambda x: True, mapper = lambda x: x):
         self.itemsPortionNum = itemsPortionNum # how many items can be in one portion, portion will be written into the outputs once full
         self.limit = limit # how many items can be scanned overall
         self.inputAdapter = inputAdapter # where to take data from
         self.outputAdapters = outputAdapters # where to write data to
         self.validator = validator
         self.mapper = mapper # function, that will be applied to the validated object, must return modified object
-        self.data = None
-        self.blackList = [] # items, that must be ignored
+        self.data = []
+        self.blackList = None # items, that must be ignored
         self.readCounter = 0
+
+    def ignore(self, doc):
+        if self.blackList:
+            self.blackList.add(doc)
 
     def readInput(self):
         if self.readCounter >= self.limit: 
             return []
 
-        while len(self.data) == 0:
-            self.data = self.inputAdapter.load(self.itemsPortionNum)
-            self.data = list(filter(lambda doc: doc in self.blackList, self.data))
+        while len(self.data) < self.itemsPortionNum:
+            data = self.inputAdapter.load(1)
+
+            if self.blackList:
+                if not self.blackList.includes(data[0]):
+                    self.data += data#list(filter(lambda doc: self.blackList.contains(doc), data))
+                    self.blackList.add(data[0])
+            else:
+                self.data += data
 
         self.readCounter += len(data)
         return self.data
@@ -350,7 +359,106 @@ class DatasetManager:
 
         for doc in self.data:
             if self.validator(doc):
-                processed.append(self.mapper(doc))
+                updatedDoc = self.mapper(doc)
+                processed.append(updatedDoc)
 
         self.data = processed
         self.writeOutput()
+
+
+class NewDatasetManager(DatasetManager):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.stop_words = set(stopwords.words("english") + ["etc"])
+        self.lemmatizer = WordNetLemmatizer()
+        self.mapper = self.f
+
+    def f(self, doc):
+        print(doc["name"])
+        return doc
+
+    def translateText(self, text, retry = 3, useServer = False):
+        # will try to use Google Translate, but if any error occures, will use Argos offline translator
+        try:
+            if text.isascii() or detect(text) == "en": return text # if the text is already english (either ascii or english with unicode emoji)
+        except LangDetectException:
+            pass
+
+        if useServer:
+            translatorURL = choice(ProjectsDatasetManager.translatorServers)
+
+            #print(translatorURL)
+            response = requests.request("POST", url = translatorURL, headers = {'Content-Type': 'application/json'}, data = dumps({"text" : text}, ensure_ascii=False, indent=4))
+
+            if response.ok:
+                return response.json()["translate"]
+        else:
+            for i in range(retry):
+                try:
+                    async def inner():
+                        nonlocal text
+
+                        async with Translator() as translator:
+                            result = await translator.translate(text, dest = "en")
+
+                        return result
+
+                    nest_asyncio.apply()  # Patch the event loop    
+                    return asyncio.run(inner()).text
+
+                except Exception as exp:
+                    # retry translation
+                    sleep(random() * 6)
+                    print("Conection error, retrying")
+                    continue
+
+        # failed translation, trying to use argos translator
+        langCode = detect(text)[:2]
+        if langCode not in ["es", "pt", "zh", "zt", "ru", "de", "ja", "ko"]: langCode = "zh" # If language is unknown, assuming it is Chinese
+        print(f"Translation Faled after {retry} attempts, Using Argos for {text[:10]}...\nLanguage detected as: {langCode}")
+        return argostranslate.translate.translate(text, langCode, "en")
+
+    def textPreprocessing(self, text):
+        # Translate:
+        #text = self.translateText(text, 3)
+        # Remove unicode:
+        text = text.encode("ascii", "ignore").decode()
+        # Process camel case:
+        #text = processCamelCase(text)
+        # Lower the text:
+        text = text.lower()
+        # remove links and urls:
+        text = re.sub(r"http[^\s]*", "", text)
+        # Remove punctuation:
+        text = text.translate(str.maketrans(string.punctuation, " " * len(string.punctuation)))
+        # Remove stop-words:
+        #text = re.sub("\s" + "|".join(stop_words) + "\s", " ", text)
+        # Remove numbers:
+        text = re.sub(r"\d", "", text)
+        # Remove new lines:
+        text = re.sub(r"\n", " ", text)
+        # Remove multiple spaces:
+        text = re.sub("\s+", " ", text).strip()
+
+        tokens = [word for word in word_tokenize(text) if word not in self.stop_words and len(word) > 1]  # Tokenize into words
+
+        tokens = [self.lemmatizer.lemmatize(word) for word in tokens]  # Remove stopwords & lemmatize
+
+        return tokens
+
+    def projectDataPreprocessing(self, project : array(dict), includingText = False) -> array([{"tokens" : str, "tags" : list}]):
+        # will take in an array of projects and prepare it to be consumed by the model
+        # takes: array of projects (as dictionaries); returns: text data and tags for every project in array
+        result = []
+
+        joinedText = " ".join([project["name"], project["description"]])
+        tokens = self.textPreprocessing(joinedText)
+
+        # only meaningfull tags will be saved, no empty strings!
+        tags = list(filter(lambda n: (n != ""), [project["id"], project["name"], project["language"]] + project["topics"]))# if proj["language"] else proj["topics"]
+        if includingText:
+            result = {"text" : joinedText, "tokens" : tokens, "tags" : tags}
+        else:
+            result = {"tokens" : tokens, "tags" : tags}
+
+        return result
