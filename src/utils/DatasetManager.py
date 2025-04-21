@@ -307,3 +307,50 @@ class ProjectsDatasetManager:
                 result[user_id].append(joinedText)
 
         return result
+
+
+class DatasetManager:
+    # read data from the input (Database or cache), filters it with 'validator', applies 'mapper' and writes into the 'outputAdapters'
+    class DatasetManagerError(Exception):
+        pass
+
+    EXP_INPUT_ERROR = DatasetManagerError("Input error")
+    EXP_OUTPUT_ERROR = DatasetManagerError("Output error")
+
+    def __init__(self, itemsPortionNum, limit = float("inf"), inputAdapter, outputAdapters = list(), validator = lambda x: True, mapper = lambda x: x):
+        self.itemsPortionNum = itemsPortionNum # how many items can be in one portion, portion will be written into the outputs once full
+        self.limit = limit # how many items can be scanned overall
+        self.inputAdapter = inputAdapter # where to take data from
+        self.outputAdapters = outputAdapters # where to write data to
+        self.validator = validator
+        self.mapper = mapper # function, that will be applied to the validated object, must return modified object
+        self.data = None
+        self.blackList = [] # items, that must be ignored
+        self.readCounter = 0
+
+    def readInput(self):
+        if self.readCounter >= self.limit: 
+            return []
+
+        while len(self.data) == 0:
+            self.data = self.inputAdapter.load(self.itemsPortionNum)
+            self.data = list(filter(lambda doc: doc in self.blackList, self.data))
+
+        self.readCounter += len(data)
+        return self.data
+
+    def writeOutput(self):
+        for output in self.outputAdapters:
+            output.save(self.data)
+
+    def __call__(self):
+        processed = []
+
+        self.readInput()
+
+        for doc in self.data:
+            if self.validator(doc):
+                processed.append(self.mapper(doc))
+
+        self.data = processed
+        self.writeOutput()
