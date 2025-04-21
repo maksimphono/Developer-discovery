@@ -23,8 +23,10 @@ import textstat
 import asyncio
 import nest_asyncio
 from googletrans import Translator
+import traceback
+import logging
 
-from src.utils.CacheAdapter import JSONAdapter, CacheAdapter
+from src.utils.CacheAdapter import JSONAdapter, CacheAdapter, EXP_END_OF_DATA
 from src.data_processing.collect_projects_data import collectOneProjectData, EXP_NOT_IN_DB
 
 def downloadArgosLangPackages(langList = ["es", "pt", "zh", "zt", "ru", "de", "ja", "ko"]):
@@ -324,8 +326,10 @@ class DatasetManager:
         self.validator = validator
         self.mapper = mapper # function, that will be applied to the validated object, must return modified object
         self.data = []
+        self.mappedData = []
         self.blackList = None # items, that must be ignored
         self.readCounter = 0
+        self.totalScannedProjects = 0
 
     def ignore(self, doc):
         if self.blackList:
@@ -336,7 +340,14 @@ class DatasetManager:
             return []
 
         while len(self.data) < self.itemsPortionNum:
-            data = self.inputAdapter.load(1)
+            try:
+                data = self.inputAdapter.load(1)
+            except EXP_END_OF_DATA:
+                if len(self.data):
+                    self.readCounter += len(data)
+                    return self.data
+                else:
+                    raise EXP_END_OF_DATA
 
             if self.blackList:
                 if not self.blackList.includes(data[0]):
@@ -350,32 +361,33 @@ class DatasetManager:
 
     def writeOutput(self):
         for output in self.outputAdapters:
-            output.save(self.data)
+            output.save(self.mappedData)
 
     def __call__(self):
-        processed = []
-
         self.readInput()
 
         for doc in self.data:
             if self.validator(doc):
                 updatedDoc = self.mapper(doc)
-                processed.append(updatedDoc)
+                self.mappedData.append(updatedDoc)
 
-        self.data = processed
+            self.totalScannedProjects += 1
+
         self.writeOutput()
 
 
 class NewDatasetManager(DatasetManager):
+    class EXP_CONNECTION_LOSS(Exception):
+        def __init__(self):
+            super().__init__("Can't establish connection with 'Google translate'")
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.stop_words = set(stopwords.words("english") + ["etc"])
         self.lemmatizer = WordNetLemmatizer()
-        self.mapper = self.f
-
-    def f(self, doc):
-        print(doc["name"])
-        return doc
+        self.mapper = self.preprocess
+        self.processedProjsIds = []
+        self.processedProjectsNum = 0
 
     def translateText(self, text, retry = 3, useServer = False):
         # will try to use Google Translate, but if any error occures, will use Argos offline translator
@@ -409,18 +421,19 @@ class NewDatasetManager(DatasetManager):
                 except Exception as exp:
                     # retry translation
                     sleep(random() * 6)
-                    print("Conection error, retrying")
+                    logging.info("Conection error, retrying")
                     continue
 
         # failed translation, trying to use argos translator
-        langCode = detect(text)[:2]
-        if langCode not in ["es", "pt", "zh", "zt", "ru", "de", "ja", "ko"]: langCode = "zh" # If language is unknown, assuming it is Chinese
-        print(f"Translation Faled after {retry} attempts, Using Argos for {text[:10]}...\nLanguage detected as: {langCode}")
-        return argostranslate.translate.translate(text, langCode, "en")
+        raise NewDatasetManager.EXP_CONNECTION_LOSS()
+        #langCode = detect(text)[:2]
+        #if langCode not in ["es", "pt", "zh", "zt", "ru", "de", "ja", "ko"]: langCode = "zh" # If language is unknown, assuming it is Chinese
+        #print(f"Translation Faled after {retry} attempts, Using Argos for {text[:10]}...\nLanguage detected as: {langCode}")
+        #return argostranslate.translate.translate(text, langCode, "en")
 
     def textPreprocessing(self, text):
         # Translate:
-        #text = self.translateText(text, 3)
+        text = self.translateText(text, 3)
         # Remove unicode:
         text = text.encode("ascii", "ignore").decode()
         # Process camel case:
@@ -452,13 +465,78 @@ class NewDatasetManager(DatasetManager):
         result = []
 
         joinedText = " ".join([project["name"], project["description"]])
+        #joinedText = ""
+        #if project["name"]:
+        #    joinedText += project["name"]
+        #if project["description"]:
+        #    joinedText += " " + project["description"]
+
         tokens = self.textPreprocessing(joinedText)
 
         # only meaningfull tags will be saved, no empty strings!
-        tags = list(filter(lambda n: (n != ""), [project["id"], project["name"], project["language"]] + project["topics"]))# if proj["language"] else proj["topics"]
+        tags = list(filter(lambda n: (n != ""), [project["proj_id"], project["name"], project["language"]] + project["topics"]))# if proj["language"] else proj["topics"]
         if includingText:
             result = {"text" : joinedText, "tokens" : tokens, "tags" : tags}
         else:
             result = {"tokens" : tokens, "tags" : tags}
 
         return result
+
+    def handleConnectionLoss(self):
+        print("Can't connect to 'Google translate', fix internet connection and try again")
+        logging.error("Can't connect to 'Google translate', fix internet connection and try again")
+        command = input()
+        if command == "c":
+            return True
+        else:
+            return False
+
+    def handleException(self):
+        message = traceback.format_exc()
+        print(f"Encountered exception, content:\n{message}\nFix it and type 'c' to proceed!")
+        logging.error(f"Encountered exception, content:\n{message}\nFix it and type 'c' to proceed!")
+        command = input()
+        if command == "c":
+            return True
+        else:
+            return False
+
+    def preprocess(self, project):
+        while True:
+            try:
+                result = self.projectDataPreprocessing(project)
+                self.processedProjsIds.append(project["id"])
+                return result
+            except NewDatasetManager.EXP_CONNECTION_LOSS as exp:
+                if self.handleConnectionLoss():
+                    continue # try again
+                else:
+                    print("Falied to fix error :(")
+                    logging.error("Falied to fix error :(")
+                    self.writeOutput()
+                    raise exp
+            except Exception as exp:
+                if self.handleException():
+                    continue
+                else:
+                    print("Falied to fix error :(")
+                    logging.error("Falied to fix error :(")
+                    self.writeOutput()
+                    raise exp                
+
+
+    def writeOutput(self):
+        if self.blackList:
+            for _id in self.processedProjsIds:
+                self.blackList.add(_id)
+
+        if len(self.mappedData):
+            for output in self.outputAdapters:
+                output.save(self.mappedData)
+
+        print(f"Processed {self.totalScannedProjects} projects in total")
+        logging.info(f"Processed {self.totalScannedProjects} projects in total")
+        self.data.clear()
+        self.mappedData.clear()
+        self.processedProjsIds.clear()
+                
