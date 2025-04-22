@@ -22,11 +22,11 @@ logging.basicConfig(
 
 
 class InputAdapter:
-    def __init__(self):
-        self.cursor = DatabaseConnector("mongodb://readonlyUser:cictest123456@114.212.84.247:27017/", "developer_discovery").collection("proj_info").find(projection = {"_id" : False, "id" : True, "proj_id" : True, "name" : True, "description" : True, "topics" : True, "language" : True})
+    def __init__(self, skip = 0):
+        self.cursor = DatabaseConnector("mongodb://readonlyUser:cictest123456@114.212.84.247:27017/", "developer_discovery").collection("proj_info").find(projection = {"fork" : True, "name" : True, "id" : True, "language" : True, "topics" : True, "description" : True, "proj_id" : True, "_id" : False}).skip(skip)
 
     def reset(self, skip = 0):
-        self.cursor = DatabaseConnector("mongodb://readonlyUser:cictest123456@114.212.84.247:27017/", "developer_discovery").collection("proj_info").find(projection = {"_id" : False, "id" : True, "proj_id" : True, "name" : True, "description" : True, "topics" : True, "language" : True}).skip(skip)
+        self.cursor = DatabaseConnector("mongodb://readonlyUser:cictest123456@114.212.84.247:27017/", "developer_discovery").collection("proj_info").find(projection = {"fork" : True, "name" : True, "id" : True, "language" : True, "topics" : True, "description" : True, "proj_id" : True, "_id" : False})
 
     def load(self, amount = 1):
         try:
@@ -49,18 +49,19 @@ class BlackList:
         if self.collection.find_one({"id" : _id}): return True
         return False
 
-inputAdapter = InputAdapter()
+inputAdapter = InputAdapter(skip = 1602000)
 
-collection = CacheConnector("mongodb://10.22.80.194:27020/").collection("cache_21-04-25")
+collection = CacheConnector("mongodb://10.22.90.255:27020/").collection("cache_21-04-25")
 outputDB = DBFlatAdapter(collection)
 outputCache = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/cache_21-04-25_(HIGHQUALITY)")
 
 manager = NewDatasetManager(
-    1000,
+    1000, 
     inputAdapter, 
     outputAdapters = [outputDB, outputCache],
     validator = projectDataIsHighQuality
 )
+manager.totalScannedProjects = 1602000
 
 while True:
     try:

@@ -376,6 +376,7 @@ class DatasetManager:
         self.writeOutput()
 
 
+# TODO: change implementation of that class, optimize the performance, increase reusability
 class NewDatasetManager(DatasetManager):
     class EXP_CONNECTION_LOSS(Exception):
         def __init__(self):
@@ -531,6 +532,8 @@ class NewDatasetManager(DatasetManager):
                 self.blackList.add(_id)
 
         if len(self.mappedData):
+            print(f"Writing {len(self.mappedData)} items")
+            logging.info(f"Writing {len(self.mappedData)} items")
             for output in self.outputAdapters:
                 output.save(self.mappedData)
 
@@ -539,4 +542,4 @@ class NewDatasetManager(DatasetManager):
         self.data.clear()
         self.mappedData.clear()
         self.processedProjsIds.clear()
-                
+

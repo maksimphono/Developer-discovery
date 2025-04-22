@@ -1,7 +1,7 @@
 # Validators are used to filter data by quality, 
 # for example, I can take only those project, that has long description, readme file and many stars
 from math import ceil
-from langdetect import detect
+from langdetect import detect, lang_detect_exception
 import re
 
 def projectDataIsSufficient(projectData):
@@ -61,12 +61,12 @@ def projectDataIsHighQuality(projectData):
             (len(projectData["topics"]) and projectData["language"])
         )): return False
 
-        thresholdsSym = {
+        thresholdsSym = { # threshold for symbols
             "zh" : 23,
             "th" : 90,
             "ja" : 40
         }
-        thresholdsSp = { # minimum amount of space symbols
+        thresholdsSp = { # threshold for spaces
             "ko" : 13,
             "hi" : 21
         }
