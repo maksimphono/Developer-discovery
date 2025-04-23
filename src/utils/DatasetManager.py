@@ -339,6 +339,7 @@ class DatasetManager:
         if self.readCounter >= self.limit: 
             return []
 
+        data = []
         while len(self.data) < self.itemsPortionNum:
             try:
                 data = self.inputAdapter.load(1)
@@ -363,6 +364,9 @@ class DatasetManager:
         for output in self.outputAdapters:
             output.save(self.mappedData)
 
+        self.data.clear()
+        self.mappedData.clear()
+
     def __call__(self):
         self.readInput()
 
@@ -374,6 +378,7 @@ class DatasetManager:
             self.totalScannedProjects += 1
 
         self.writeOutput()
+        
 
 
 # TODO: change implementation of that class, optimize the performance, increase reusability
@@ -543,3 +548,20 @@ class NewDatasetManager(DatasetManager):
         self.mappedData.clear()
         self.processedProjsIds.clear()
 
+counter = 0
+
+class NormalizerRemover(DatasetManager):
+    # will normalize the dataset by removing tags from tag list of each document
+    def __init__(self, tagsToRemove = [], *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.mapper = self.normalize
+        self.tagsToRemove = set(tagsToRemove)
+
+    def normalize(self, doc):
+        if counter >= 11:
+            print("end")
+            return
+        for tag in set(doc["tags"]) & self.tagsToRemove:
+            doc["tags"].remove(tag)
+
+        return doc
