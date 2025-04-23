@@ -11,7 +11,7 @@ from numpy import mean
 
 from gensim.models.doc2vec import TaggedDocument
 
-from src.utils.CacheAdapter import CacheAdapter, JSONAdapter, JSONMultiFileAdapter, EXP_END_OF_DATA, createTrainSetAdapter_02_04_25_GOOD
+from src.utils.CacheAdapter import CacheAdapter, JSONAdapter, JSONMultiFileAdapter, EXP_END_OF_DATA, createTrainSetAdapter_02_04_25_GOOD, Factory_21_04_25_HIGH as CacheFactory
 from src.utils.DatasetManager import ProjectsDatasetManager
 from src.utils.validators import projectDataIsSufficient
 from src.utils.helpers import flatternData
@@ -113,7 +113,7 @@ class FlatCorpus(Corpus):
 
 from src.utils.CacheAdapter import createTestSetAdapter_02_04_25_GOOD, createTrainSetAdapter_02_04_25_GOOD, createTrainSetDBadepter_02_04_25_GOOD, createTestSetDBadepter_02_04_25_GOOD
 
-class Factory:
+class Factory_02_04_25:
     @classmethod
     def createFlatTrainCorpus_02_04_25_GOOD(cls, limit = np.inf):
         adapter = createTrainSetAdapter_02_04_25_GOOD()
@@ -132,4 +132,31 @@ class Factory:
     @classmethod
     def createFlatTestDBCorpus_02_04_25_GOOD(cls, limit = np.inf):
         adapter = createTestSetDBadepter_02_04_25_GOOD()
+        return FlatCorpus(adapter, limit = limit)
+
+
+class Factory_21_04_25_HIGH:
+    @classmethod
+    def createNormCorpus(cls, limit = np.inf):
+        adapter = CacheFactory.createNormAdapter()
+        return FlatCorpus(adapter, limit = limit)
+
+    @classmethod
+    def createFlatCorpus(cls, limit = np.inf):
+        adapter = CacheFactory.createFlatAdapter()
+        return FlatCorpus(adapter, limit = limit)
+
+    @classmethod
+    def createFlatTrainCorpus(cls, limit = np.inf):
+        adapter = CacheFactory.createTrainSetAdapter()
+        return FlatCorpus(adapter, limit = limit)
+
+    @classmethod
+    def createTrainDBCorpus(cls, limit = np.inf):
+        adapter = CacheFactory.createTrainSetDBadepter()
+        return FlatCorpus(adapter, limit = limit)
+
+    @classmethod
+    def createFlatTestCorpus(cls, limit = np.inf):
+        adapter = CacheFactory.createTestSetAdapter()
         return FlatCorpus(adapter, limit = limit)

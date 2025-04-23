@@ -548,20 +548,3 @@ class NewDatasetManager(DatasetManager):
         self.mappedData.clear()
         self.processedProjsIds.clear()
 
-counter = 0
-
-class NormalizerRemover(DatasetManager):
-    # will normalize the dataset by removing tags from tag list of each document
-    def __init__(self, tagsToRemove = [], *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.mapper = self.normalize
-        self.tagsToRemove = set(tagsToRemove)
-
-    def normalize(self, doc):
-        if counter >= 11:
-            print("end")
-            return
-        for tag in set(doc["tags"]) & self.tagsToRemove:
-            doc["tags"].remove(tag)
-
-        return doc

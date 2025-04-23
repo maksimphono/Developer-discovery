@@ -6,7 +6,7 @@ sys.path.append('/home/trukhinmaksim/src')
 from random import sample, random
 from time import sleep
 
-from pymongo.errors import ServerSelectionTimeoutError
+from pymongo.errors import ServerSelectionTimeoutError, CursorNotFound
 
 from src.utils.DatasetManager import DatasetManager, NewDatasetManager
 from src.utils.DatabaseConnect import DatabaseConnector, CacheConnector
@@ -23,6 +23,7 @@ logging.basicConfig(
     level=logging.INFO
 )
 
+TATAL_SCANNED_PROJECTS = 3111000
 
 class InputAdapter:
     def __init__(self, skip = 0):
@@ -55,7 +56,7 @@ class BlackList:
         if self.collection.find_one({"id" : _id}): return True
         return False
 
-inputAdapter = InputAdapter(skip = 1853000)
+inputAdapter = InputAdapter(skip = TATAL_SCANNED_PROJECTS)
 
 collection = CacheConnector("mongodb://10.22.90.255:27020/").collection("cache_21-04-25")
 outputDB = DBFlatAdapter(collection)
@@ -67,9 +68,9 @@ manager = NewDatasetManager(
     outputAdapters = [outputDB, outputCache],
     validator = projectDataIsHighQuality
 )
-manager.totalScannedProjects = 1853000
+manager.totalScannedProjects = TATAL_SCANNED_PROJECTS
 
-totalScannedProjects = 1853000
+totalScannedProjects = TATAL_SCANNED_PROJECTS
 while True:
     try:
         manager()
@@ -81,3 +82,6 @@ while True:
         manager.inputAdapter.reset(totalScannedProjects)
         sleep(random() * 15)
         continue
+    #except CursorNotFound:
+    #    print(f"Error 'CursorNotFound', recreating the manager with totalScannedProjects = {totalScannedProjects}")
+    #    manager.inputAdapter = InputAdapter(skip = totalScannedProjects)
