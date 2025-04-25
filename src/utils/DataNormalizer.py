@@ -5,7 +5,7 @@ from src.utils.DatasetManager import DatasetManager
 
 class NormalizerRemover(DatasetManager):
     # will normalize the dataset by removing tags from tag list of each document, tags that must be deleted are deleted first, then most unpopular tags are removed untill the list is too long
-    KEEP_TAGS_AMOUNT = 12
+    KEEP_TAGS_AMOUNT = 6
     ITEMS_PORION_LEN = 1000
 
     def __init__(self, tagsToKeep = list(), tagsDistribution = dict(), *args, **kwargs):

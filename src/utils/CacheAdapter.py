@@ -264,7 +264,7 @@ def createTestSetDBadepter_02_04_25_GOOD():
 class Factory_21_04_25_HIGH:
     @classmethod
     def createNormAdapter(cls):
-        return FlatAdapter("/home/trukhinmaksim/src/data/normalized_21-04-25_(high)/normalized_21-04-25_(high)")
+        return FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/normalized_21-04-25_(high)")
 
     @classmethod
     def createFlatAdapter(cls):
