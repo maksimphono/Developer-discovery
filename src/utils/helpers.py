@@ -1,4 +1,5 @@
 import numpy as np
+from time import time
 
 def flatternData(data : dict[str, list]) -> np.array(dict):
     # takes in data in form of dict, where each key is a user id and each value is a list of that user's projects

@@ -383,6 +383,8 @@ class DatasetManager:
 
 # TODO: change implementation of that class, optimize the performance, increase reusability
 class NewDatasetManager(DatasetManager):
+    translatorServers = []
+
     class EXP_CONNECTION_LOSS(Exception):
         def __init__(self):
             super().__init__("Can't establish connection with 'Google translate'")
@@ -403,13 +405,17 @@ class NewDatasetManager(DatasetManager):
             pass
 
         if useServer:
-            translatorURL = choice(ProjectsDatasetManager.translatorServers)
+            translatorURL = choice(NewDatasetManager.translatorServers)
 
             #print(translatorURL)
+            #print(f"Connecting through server, text = '{text}', got response:")
             response = requests.request("POST", url = translatorURL, headers = {'Content-Type': 'application/json'}, data = dumps({"text" : text}, ensure_ascii=False, indent=4))
 
+            print(response)
             if response.ok:
                 return response.json()["translate"]
+            else:
+                raise NewDatasetManager.EXP_CONNECTION_LOSS
         else:
             for i in range(retry):
                 try:
@@ -439,7 +445,7 @@ class NewDatasetManager(DatasetManager):
 
     def textPreprocessing(self, text):
         # Translate:
-        text = self.translateText(text, 3)
+        text = self.translateText(text, 3, False)
         # Remove unicode:
         text = text.encode("ascii", "ignore").decode()
         # Process camel case:
@@ -488,9 +494,9 @@ class NewDatasetManager(DatasetManager):
 
         return result
 
-    def handleConnectionLoss(self):
-        print("Can't connect to 'Google translate', fix internet connection and try again")
-        logging.error("Can't connect to 'Google translate', fix internet connection and try again")
+    def handleConnectionLoss(self, payload = {}):
+        print(f"Can't connect to 'Google translate', fix internet connection and try again")
+        logging.error(f"Can't connect to 'Google translate', fix internet connection and try again; {payload}")
         command = input()
         if command == "c":
             return True
@@ -507,6 +513,12 @@ class NewDatasetManager(DatasetManager):
         else:
             return False
 
+    def interruptGracefully(self, exp, message):
+        print(message)
+        logging.error(message)
+        self.writeOutput()
+        raise exp
+
     def preprocess(self, project):
         while True:
             try:
@@ -517,18 +529,12 @@ class NewDatasetManager(DatasetManager):
                 if self.handleConnectionLoss():
                     continue # try again
                 else:
-                    print("Falied to fix error :(")
-                    logging.error("Falied to fix error :(")
-                    self.writeOutput()
-                    raise exp
+                    self.interruptGracefully(f"Falied to fix error :(\nError occured while scanning {project['proj_id']}")
             except Exception as exp:
                 if self.handleException():
                     continue
                 else:
-                    print("Falied to fix error :(")
-                    logging.error("Falied to fix error :(")
-                    self.writeOutput()
-                    raise exp                
+                    self.interruptGracefully(f"Falied to fix error :(\nError occured while scanning {project['proj_id']}")
 
 
     def writeOutput(self):

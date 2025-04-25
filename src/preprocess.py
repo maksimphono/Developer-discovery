@@ -5,6 +5,8 @@ import sys
 sys.path.append('/home/trukhinmaksim/src')
 from random import sample, random
 from time import sleep
+from requests import request
+from json import dumps
 
 from pymongo.errors import ServerSelectionTimeoutError, CursorNotFound
 
@@ -23,7 +25,7 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-TATAL_SCANNED_PROJECTS = 3111000
+TATAL_SCANNED_PROJECTS = 29410005
 
 class InputAdapter:
     def __init__(self, skip = 0):
@@ -56,11 +58,23 @@ class BlackList:
         if self.collection.find_one({"id" : _id}): return True
         return False
 
+class BLK:
+    def includes(self, item):
+        if item["proj_id"] == "github:cirosantilli/x86-bare-metal-examples":
+            return True
+        else:
+            return False
+
+    def add(self, item):
+        pass
+
 inputAdapter = InputAdapter(skip = TATAL_SCANNED_PROJECTS)
 
 collection = CacheConnector("mongodb://10.22.90.255:27020/").collection("cache_21-04-25")
 outputDB = DBFlatAdapter(collection)
 outputCache = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/cache_21-04-25_(HIGHQUALITY)")
+
+NewDatasetManager.translatorServers = ["http://18.212.85.208:8000/", "http://54.164.98.155:8000/"]
 
 manager = NewDatasetManager(
     1000, 
@@ -68,9 +82,13 @@ manager = NewDatasetManager(
     outputAdapters = [outputDB, outputCache],
     validator = projectDataIsHighQuality
 )
+manager.blackList = BLK()
 manager.totalScannedProjects = TATAL_SCANNED_PROJECTS
 
 totalScannedProjects = TATAL_SCANNED_PROJECTS
+
+print(request("POST", url = NewDatasetManager.translatorServers[0], headers = {'Content-Type': 'application/json'}, data = dumps({"text" : "你好"}, ensure_ascii=False, indent=4)))
+
 while True:
     try:
         manager()
