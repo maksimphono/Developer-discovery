@@ -115,7 +115,7 @@ class MemoryCorpus(CacheCorpus):
         self.limit = limit
         self.onlyID = False
         self.adapter = adapter
-        self.data = adapter.load(limit)
+        self.data = np.array(adapter.load(limit))
         self.len = len(self.data)
         self.position = 0
 
