@@ -8,6 +8,7 @@ from time import time
 from random import sample, seed as randomSeed
 from collections import defaultdict
 from numpy import mean
+from copy import deepcopy
 
 from gensim.models.doc2vec import TaggedDocument
 
@@ -79,10 +80,13 @@ class FlatCorpus(Corpus):
             self.adapter = createTrainSetAdapter_02_04_25_GOOD()
 
         self.limit = limit
-        self.onlyID = False
+        self._onlyID = False
 
     def reset(self):
         self.adapter.reset()
+
+    def onlyID(self, val):
+        self._onlyID = bool(val)
 
     def __iter__(self):
         # will feed preprocessed projects data as TaggedDocument instances one by one
@@ -91,7 +95,7 @@ class FlatCorpus(Corpus):
         while True:
             try:
                 doc = self.adapter.load(1)[0]
-                if self.onlyID:
+                if self._onlyID:
                     yield TaggedDocument(words = doc["tokens"], tags = doc["tags"][:1]) # tags[0] is always an id
                 else:
                     yield TaggedDocument(words = doc["tokens"], tags = doc["tags"])
@@ -113,22 +117,26 @@ class FlatCorpus(Corpus):
 class MemoryCorpus(CacheCorpus):
     def __init__(self, adapter = None, limit = np.inf):
         self.limit = limit
-        self.onlyID = False
         self.adapter = adapter
-        self.data = np.array(adapter.load(limit))
-        self.len = len(self.data)
         self.position = 0
+        self.data = tuple([TaggedDocument(words = doc["tokens"], tags = doc["tags"]) for doc in adapter.load(limit)])
+        adapter.reset()
+        self.dataOnlyID = tuple([TaggedDocument(words = doc["tokens"], tags = doc["tags"][:1]) for doc in adapter.load(limit)])
+        self.len = len(self.data)
+        self.workingList = self.data
 
     def reset(self):
         self.position = 0
 
+    def onlyID(self, val):
+        if val:
+            self.workingList = self.dataOnlyID
+        else:
+            self.workingList = self.data
+
     def __iter__(self):
         while self.position < self.len:
-            doc = self.data[self.position]
-            if self.onlyID:
-                yield TaggedDocument(words = doc["tokens"], tags = doc["tags"][1:])
-            else:
-                yield TaggedDocument(words = doc["tokens"], tags = doc["tags"])
+            yield self.workingList[self.position]
 
             self.position += 1
 
@@ -136,7 +144,7 @@ class MemoryCorpus(CacheCorpus):
 
     
     def __getitem__(self, _indexes):
-        return [TaggedDocument(words = self.data[i]["tokens"], tags = self.data[i]["tags"]) for i in _indexes]
+        return [self.workingList[i] for i in _indexes]
 
 
 from src.utils.CacheAdapter import createTestSetAdapter_02_04_25_GOOD, createTrainSetAdapter_02_04_25_GOOD, createTrainSetDBadepter_02_04_25_GOOD, createTestSetDBadepter_02_04_25_GOOD

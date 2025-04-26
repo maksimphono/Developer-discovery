@@ -99,7 +99,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
     def train(self):
         # will build vocabulary and train the model on trainset (trainset will be fed by corpus)
         
-        self.trainCorpus.onlyID = True # for training, I have to get only id of each vector as tag
+        self.trainCorpus.onlyID(True) # for training, I have to get only id of each vector as tag
         if not isinstance(self.trainCorpus, Corpus): raise EXP_CORPUS_IS_NONE
         #if not isinstance(self.manager, ProjectsDatasetManager): raise EXP_MANAGER_IS_NONE
 
@@ -147,7 +147,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         
                 searcher = AnnoySearcher.create(self.dv.vectors)
 
-                self.trainCorpus.onlyID = False # for testing all tags are needed
+                self.trainCorpus.onlyID(False) # for testing all tags are needed
         
                 for query in self.testCorpus:
                     vector = self.infer_vector(query.words)
