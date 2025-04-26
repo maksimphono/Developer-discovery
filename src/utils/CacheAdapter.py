@@ -3,7 +3,7 @@ import json
 from itertools import islice
 import logging
 
-from src.utils.DatabaseConnect import CacheConnector_02_04_25
+from src.utils.DatabaseConnect import CacheConnector, CacheConnector_02_04_25
 
 PREPROCESSED_DATA_CACHE_PATH = "/home/trukhinmaksim/src/data/train_02-04-25"
 
@@ -68,17 +68,19 @@ class FlatAdapter(CacheAdapter):
     def load(self, amount = 25):
         docs = []
 
-        for i in range(amount):
+        i = 0
+        while i < amount:
             line = self.readFp.readline()
 
             if len(line) == 0: # empty object in the line
                 if len(docs) > 0:
                     return docs
                 else:
-                    self.resetRead()
+                    #self.reset()
                     raise EXP_END_OF_DATA
 
             docs.append(json.loads(line))
+            i += 1
 
         return docs
 
@@ -204,7 +206,7 @@ class DBFlatAdapter(CacheAdapter):
                 if len(result) > 0:
                     return result
                 else:
-                    self.reset()
+                    #self.reset()
                     raise EXP_END_OF_DATA
 
             result.append(doc)
@@ -231,7 +233,7 @@ class DBFlatAdapter(CacheAdapter):
 CACHE_02_04_25_GOOD_TMPLT = "/home/trukhinmaksim/src/data/cache_02-04-25/cache__02-04-2025__(good)_{0}.json"
 TRAIN_CACHE_02_04_25_GOOD = "/home/trukhinmaksim/src/data/train_02-04-25/train_02-04-25"
 TEST_CACHE_02_04_25_GOOD = "/home/trukhinmaksim/src/data/train_02-04-25/test_02-04-25"
-DB_LINK = "mongodb://10.22.16.250:27020/"
+DB_LINK = "mongodb://10.22.90.255:27020/"
 
 #@classmethod
 def createAdapter_02_04_25_GOOD(*args, **kwargs):
@@ -260,3 +262,24 @@ def createTestSetDBadepter_02_04_25_GOOD():
     connector = CacheConnector_02_04_25(DB_LINK)
     collection = connector.test_02_04_25
     return DBFlatAdapter(collection)
+
+class Factory_21_04_25_HIGH:
+    @classmethod
+    def createNormAdapter(cls):
+        return FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/normalized_21-04-25_(high)")
+
+    @classmethod
+    def createFlatAdapter(cls):
+        return FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/cache_21-04-25_(high)")
+
+    @classmethod
+    def createDBadapter(cls):
+        connector = CacheConnector(DB_LINK)
+        collection = connector.collection("cache_21-04-25")
+        return DBFlatAdapter(collection)
+
+    @classmethod
+    def createTrainSetDBadepter(cls):
+        connector = CacheConnector_02_04_25(DB_LINK)
+        collection = connector.train_02_04_25
+        return DBFlatAdapter(collection)

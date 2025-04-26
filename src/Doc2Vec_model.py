@@ -3,16 +3,18 @@ sys.path.append('/home/trukhinmaksim/src')
 
 import numpy as np
 import json
+import os
 from time import time
 from random import sample, seed as randomSeed
 from collections import defaultdict
 from numpy import mean
+from contextlib import redirect_stdout
 import logging
 
 from src.utils.CacheAdapter import JSONAdapter, JSONMultiFileAdapter, EXP_END_OF_DATA
 from src.utils.DatasetManager import ProjectsDatasetManager
 from src.utils.validators import projectDataIsSufficient
-from src.utils.Corpus import Corpus
+from src.utils.Corpus import Corpus, CorpusFactory
 from src.utils.helpers import normalize
 
 import gensim
@@ -97,7 +99,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
     def train(self):
         # will build vocabulary and train the model on trainset (trainset will be fed by corpus)
         
-        self.trainCorpus.onlyID = True # for training, I have to get only id of each vector as tag
+        self.trainCorpus.onlyID(True) # for training, I have to get only id of each vector as tag
         if not isinstance(self.trainCorpus, Corpus): raise EXP_CORPUS_IS_NONE
         #if not isinstance(self.manager, ProjectsDatasetManager): raise EXP_MANAGER_IS_NONE
 
@@ -139,25 +141,29 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         f1Scores = []
         i = 0
 
-        searcher = AnnoySearcher.create(self.dv.vectors)
-
-        self.trainCorpus.onlyID = False # for testing all tags are needed
-
         start = time()
-        for query in self.testCorpus:
-            vector = self.infer_vector(query.words)
-            topK = sorted(searcher.selectKmostSimilar(vector, k))
-            #topK = [p[0] for p in sorted(self.selectKmostSimilar(vector, k), key = lambda pair: pair[0])]
+        with open(os.devnull, 'w') as f:
+            with redirect_stdout(f): # redirect standard output into void, so 'annoy' doesn't print anything
+        
+                searcher = AnnoySearcher.create(self.dv.vectors)
 
-            predictedRelevant = np.ones(k)
-            trueRelevant = self.checkRelevants(topK, query.tags)
+                self.trainCorpus.onlyID(False) # for testing all tags are needed
+        
+                for query in self.testCorpus:
+                    vector = self.infer_vector(query.words)
+                    topK = sorted(searcher.selectKmostSimilar(vector, k))
+                    #topK = [p[0] for p in sorted(self.selectKmostSimilar(vector, k), key = lambda pair: pair[0])]
 
-            f1Scores.append(f1_score(trueRelevant, predictedRelevant))
+                    predictedRelevant = np.ones(k)
+                    trueRelevant = self.checkRelevants(topK, query.tags)
 
-            i += 1
+                    f1Scores.append(f1_score(trueRelevant, predictedRelevant))
 
-        self.logger.info(f"Testing completed in {time() - start} s")
-        return np.mean(f1Scores)
+                    i += 1
+
+        result = np.mean(f1Scores)
+        self.logger.info(f"\nTesting completed in {time() - start} s; Result: {result}")
+        return result
 
     def assess(self, sampleNum = 5, silent = False, format = "full", random_state = None):
         # simple test of model performance
@@ -211,6 +217,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         # will train the model on upon-selected set of parameters and test it's performance
         self.train()
 
+        self.trainCorpus = CorpusFactory.createFlatTrainDBCorpus_02_04_25_GOOD() # for testing step I must use database adapter for better documents retreival
         #result = self.test(6000, silent = True, format = "mean", random_state = 42)
         result = self.test(k = 9)
 

@@ -14,7 +14,7 @@ from numpy import mean
 from src.utils.CacheAdapter import JSONMultiFileAdapter, EXP_END_OF_DATA, createAdapter_02_04_25_GOOD
 from src.utils.DatasetManager import ProjectsDatasetManager
 from src.utils.validators import projectDataIsSufficient
-from src.utils.Corpus import CacheCorpus, Factory as CorpusFactory
+from src.utils.Corpus import CacheCorpus, Factory_21_04_25_HIGH as CorpusFactory
 
 from skopt.space import Real, Integer
 from src.utils.AutoTuner import AutoTuner, Param
@@ -22,10 +22,10 @@ from src.Doc2Vec_model import Model
 
 CACHE_FILE_NAME = "cache__02-04-2025__(good)_{0}.json"
 
-MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/15-04-25_Doc2Vec.model"
-RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/15-04-25_evaluatuin.result"
-TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/15-04-25_autotunning.log"
-TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/15-04-25_training.log"
+MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/17-04-25_Doc2Vec.model"
+RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/17-04-25_evaluatuin.result"
+TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/17-04-25_autotunning.log"
+TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/17-04-25_training.log"
 
 
 adapter = createAdapter_02_04_25_GOOD()#JSONMultiFileAdapter(CACHE_FILE_NAME)
@@ -34,14 +34,15 @@ corpus = CacheCorpus(manager, 100)
 
 # creating model
 
-VECTOR_SIZE = 200
+#VECTOR_SIZE = 200
 ALPHA_INIT = 0.05
 ALPHA_FINAL = 0.00001
 
+trainCorpus = None
+testCorpus = None
 
 def createModel(**kwargs):
     model = Model(
-                vector_size = VECTOR_SIZE,
                 dm_dbow_mode = "DM", 
                 alpha_init = ALPHA_INIT,
                 alpha_final = ALPHA_FINAL,
@@ -49,8 +50,16 @@ def createModel(**kwargs):
             )
     #manager.cacheAdapter.reset()
     #manager.clearData()
-    model.trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD()
-    model.testCorpus = CorpusFactory.createFlatTestCorpus_02_04_25_GOOD()
+    if trainCorpus == None:
+        #trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD(50)
+        trainCorpus = CorpusFactory.createNormCorpus(50)
+    if testCorpus == None:
+        testCorpus = CorpusFactory.createNormCorpus(50)
+
+    trainCorpus.reset()
+    testCorpus.reset()
+    model.trainCorpus = trainCorpus
+    model.testCorpus = testCorpus
 
     return model
 
@@ -66,11 +75,12 @@ def saveModel(model):
 def main():
     start = time()
     parameters = [
-        Param(_name = "window",    _type = Integer,  _range = (5, 10),      _initial = 7),
-        Param(_name = "min_count", _type = Integer,  _range = (7, 13),      _initial = 7),
-        Param(_name = "epochs",    _type = Integer,  _range = (30, 45),     _initial = 35),
-        Param(_name = "negative",  _type = Integer,  _range = (5, 13),      _initial = 5),
-        Param(_name = "sample",    _type = Real,     _range = (1e-6, 1e-5), _initial = 1e-5),
+        Param(_name = "vector_size", _type = Integer,  _range = (180, 210),   _initial = 200), # 185
+        Param(_name = "window",      _type = Integer,  _range = (5, 10),      _initial = 7),
+        Param(_name = "min_count",   _type = Integer,  _range = (7, 13),      _initial = 7),
+        Param(_name = "epochs",      _type = Integer,  _range = (30, 45),     _initial = 35),
+        Param(_name = "negative",    _type = Integer,  _range = (5, 13),      _initial = 13), # 5
+        Param(_name = "sample",      _type = Real,     _range = (1e-6, 1e-5), _initial = 1e-5),
     ]
 
     tuner = AutoTuner(createModel, parameters)
