@@ -68,7 +68,8 @@ class FlatAdapter(CacheAdapter):
     def load(self, amount = 25):
         docs = []
 
-        for i in range(amount):
+        i = 0
+        while i < amount:
             line = self.readFp.readline()
 
             if len(line) == 0: # empty object in the line
@@ -79,6 +80,7 @@ class FlatAdapter(CacheAdapter):
                     raise EXP_END_OF_DATA
 
             docs.append(json.loads(line))
+            i += 1
 
         return docs
 

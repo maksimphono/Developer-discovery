@@ -110,6 +110,34 @@ class FlatCorpus(Corpus):
     def __getitem__(self, _indexes):
         return [TaggedDocument(words = doc["tokens"], tags = doc["tags"]) for doc in self.adapter[_indexes]]
 
+class MemoryCorpus(CacheCorpus):
+    def __init__(self, adapter = None, limit = np.inf):
+        self.limit = limit
+        self.onlyID = False
+        self.adapter = adapter
+        self.data = adapter.load(limit)
+        self.len = len(self.data)
+        self.position = 0
+
+    def reset(self):
+        self.position = 0
+
+    def __iter__(self):
+        while self.position < self.len:
+            doc = self.data[self.position]
+            if self.onlyID:
+                yield TaggedDocument(words = doc["tokens"], tags = doc["tags"][1:])
+            else:
+                yield TaggedDocument(words = doc["tokens"], tags = doc["tags"])
+
+            self.position += 1
+
+        self.reset()
+
+    
+    def __getitem__(self, _indexes):
+        return [TaggedDocument(words = self.data[i]["tokens"], tags = self.data[i]["tags"]) for i in _indexes]
+
 
 from src.utils.CacheAdapter import createTestSetAdapter_02_04_25_GOOD, createTrainSetAdapter_02_04_25_GOOD, createTrainSetDBadepter_02_04_25_GOOD, createTestSetDBadepter_02_04_25_GOOD
 
