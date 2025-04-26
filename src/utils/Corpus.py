@@ -175,7 +175,7 @@ class Factory_21_04_25_HIGH:
     @classmethod
     def createNormCorpus(cls, limit = np.inf):
         adapter = CacheFactory.createNormAdapter()
-        return FlatCorpus(adapter, limit = limit)
+        return MemoryCorpus(adapter, limit = limit)
 
     @classmethod
     def createFlatCorpus(cls, limit = np.inf):

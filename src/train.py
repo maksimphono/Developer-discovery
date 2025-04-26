@@ -14,7 +14,7 @@ from numpy import mean
 from src.utils.CacheAdapter import JSONMultiFileAdapter, EXP_END_OF_DATA, createAdapter_02_04_25_GOOD
 from src.utils.DatasetManager import ProjectsDatasetManager
 from src.utils.validators import projectDataIsSufficient
-from src.utils.Corpus import CacheCorpus, Factory as CorpusFactory
+from src.utils.Corpus import CacheCorpus, Factory_21_04_25_HIGH as CorpusFactory
 
 from skopt.space import Real, Integer
 from src.utils.AutoTuner import AutoTuner, Param
@@ -38,6 +38,8 @@ corpus = CacheCorpus(manager, 100)
 ALPHA_INIT = 0.05
 ALPHA_FINAL = 0.00001
 
+trainCorpus = None
+testCorpus = None
 
 def createModel(**kwargs):
     model = Model(
@@ -48,8 +50,16 @@ def createModel(**kwargs):
             )
     #manager.cacheAdapter.reset()
     #manager.clearData()
-    model.trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD(50)
-    model.testCorpus = CorpusFactory.createFlatTestCorpus_02_04_25_GOOD(10)
+    if trainCorpus == None:
+        #trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD(50)
+        trainCorpus = CorpusFactory.createNormCorpus(50)
+    if testCorpus == None:
+        testCorpus = CorpusFactory.createNormCorpus(50)
+
+    trainCorpus.reset()
+    testCorpus.reset()
+    model.trainCorpus = trainCorpus
+    model.testCorpus = testCorpus
 
     return model
 
@@ -65,11 +75,11 @@ def saveModel(model):
 def main():
     start = time()
     parameters = [
-        Param(_name = "vector_size", _type = Integer,  _range = (180, 210),   _initial = 185),
+        Param(_name = "vector_size", _type = Integer,  _range = (180, 210),   _initial = 200), # 185
         Param(_name = "window",      _type = Integer,  _range = (5, 10),      _initial = 7),
         Param(_name = "min_count",   _type = Integer,  _range = (7, 13),      _initial = 7),
         Param(_name = "epochs",      _type = Integer,  _range = (30, 45),     _initial = 35),
-        Param(_name = "negative",    _type = Integer,  _range = (5, 13),      _initial = 5),
+        Param(_name = "negative",    _type = Integer,  _range = (5, 13),      _initial = 13), # 5
         Param(_name = "sample",      _type = Real,     _range = (1e-6, 1e-5), _initial = 1e-5),
     ]
 
