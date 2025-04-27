@@ -20,21 +20,13 @@ from skopt.space import Real, Integer
 from src.utils.AutoTuner import AutoTuner, Param
 from src.Doc2Vec_model import Model
 
-CACHE_FILE_NAME = "cache__02-04-2025__(good)_{0}.json"
-
 MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/27-04-25_Doc2Vec.model"
 RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/27-04-25_evaluatuin.result"
 TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/27-04-25_autotunning.log"
 TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/27-04-25_training.log"
 
-
-adapter = createAdapter_02_04_25_GOOD()#JSONMultiFileAdapter(CACHE_FILE_NAME)
-manager = ProjectsDatasetManager(50, cacheAdapter = adapter)
-corpus = CacheCorpus(manager, 100)
-
 # creating model
 
-#VECTOR_SIZE = 200
 ALPHA_INIT = 0.05
 ALPHA_FINAL = 0.00001
 
@@ -49,8 +41,7 @@ def createModel(**kwargs):
                 alpha_final = ALPHA_FINAL,
                 **kwargs
             )
-    #manager.cacheAdapter.reset()
-    #manager.clearData()
+
     if trainCorpus == None:
         #trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD(50)
         trainCorpus = CorpusFactory.createFlatTrainCorpus()
