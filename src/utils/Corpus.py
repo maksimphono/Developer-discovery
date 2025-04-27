@@ -12,7 +12,7 @@ from copy import deepcopy
 
 from gensim.models.doc2vec import TaggedDocument
 
-from src.utils.CacheAdapter import CacheAdapter, JSONAdapter, JSONMultiFileAdapter, EXP_END_OF_DATA, createTrainSetAdapter_02_04_25_GOOD, Factory_21_04_25_HIGH
+from src.utils.CacheAdapter import CacheAdapter, JSONAdapter, JSONMultiFileAdapter, EXP_END_OF_DATA, createTrainSetAdapter_02_04_25_GOOD, Factory_21_04_25_HIGH as AdapterFactory_21_04_25
 from src.utils.DatasetManager import ProjectsDatasetManager
 from src.utils.validators import projectDataIsSufficient
 from src.utils.helpers import flatternData
@@ -178,29 +178,30 @@ class Factory_02_04_25:
 
 
 class Factory_21_04_25_HIGH:
-    CacheFactory = Factory_21_04_25_HIGH
+    AdapterFactory = AdapterFactory_21_04_25
 
     @classmethod
     def createNormCorpus(cls, limit = np.inf):
-        adapter = Factory_21_04_25_HIGH.createNormAdapter()
-        return MemoryCorpus(adapter, limit = limit)
+        adapter = AdapterFactory_21_04_25.createNormAdapter()
+        return FlatCorpus(adapter, limit = limit)
+        #return MemoryCorpus(adapter, limit = limit, includeOnlyID = False)
 
     @classmethod
     def createFlatCorpus(cls, limit = np.inf):
-        adapter = Factory_21_04_25_HIGH.createFlatAdapter()
+        adapter = AdapterFactory_21_04_25.createFlatAdapter()
         return FlatCorpus(adapter, limit = limit)
 
     @classmethod
     def createFlatTrainCorpus(cls, limit = np.inf):
-        adapter = Factory_21_04_25_HIGH.createTrainSetAdapter()
+        adapter = AdapterFactory_21_04_25.createTrainSetAdapter()
         return MemoryCorpus(adapter, limit = limit)
 
     @classmethod
     def createFlatTestCorpus(cls, limit = np.inf):
-        adapter = Factory_21_04_25_HIGH.createTestSetAdapter()
-        return MemoryCorpus(adapter, limit = limit)
+        adapter = AdapterFactory_21_04_25.createTestSetAdapter()
+        return MemoryCorpus(adapter, limit = limit, includeOnlyID = False)
 
     @classmethod
     def createTrainDBCorpus(cls, limit = np.inf):
-        adapter = Factory_21_04_25_HIGH.createTrainSetDBadepter()
+        adapter = AdapterFactory_21_04_25.createTrainSetDBadepter()
         return FlatCorpus(adapter, limit = limit)

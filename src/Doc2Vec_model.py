@@ -170,53 +170,44 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         # take multiple documents from the training corpus and tries to find simillar in the dataset
         # format = "full" | "mean"
 
-        log = lambda s: print(s) if not silent else None
+        self.trainCorpus.onlyID(True)
         #performanceGrageScale = {50 : "Random", 60 : "Poor", 70 : "Bad", 80 : "Medium", 92 : "Optimal", 97 : "Perfect"}
         totalDocuments = self.corpus_count
         if random_state != None: randomSeed(random_state)
         indexes = sample(range(totalDocuments), sampleNum)
+
         if format == "full":
             stats = {}
 
-        i = 0
         avgPerformances = []
 
-        for doc in self.trainCorpus[indexes]:
-            vector = self.infer_vector(doc.words)
-            sims = defaultdict(lambda: 0, self.dv.most_similar([vector], topn = int(totalDocuments * 0.3)))
-            log(f"Assessing document {i} ({doc.tags}). Similarities by tags:")
+        start = time()
+        i = 0
+        for query in self.trainCorpus[indexes]:
+            vector = self.infer_vector(query.words)
+            queryID = query.tags[0]
 
-            if format == "full":
-                stats[i] = {
-                    "similarities by tags" : {},
-                    "average" : 0
-                }
-            
-            for tag in doc.tags:
-                if format == "full":
-                    stats[i]["similarities by tags"][tag] = sims[tag]
-                log(f"  {tag} : {sims[tag]}")
-            avgPerformances.append(mean([sims[tag] for tag in doc.tags]))
-            log(f"\n  Average similarity value: {avgPerformances[-1]}\n")
-            
-            if format == "full":
-                stats[i]["average"] = avgPerformances[-1]
+            sims = defaultdict(lambda: 0, self.dv.most_similar([vector], topn = int(totalDocuments * 0.3)))
+
+            avgPerformances.append(sims[queryID])
+
             i += 1
 
-        if format == "full":
-            stats["Average accuracy"] = mean(avgPerformances)
-            log(f"Average accuracy: {stats['Average accuracy']}")
+        result = mean(avgPerformances)
+        self.logger.info(f"\nAssess completed in {time() - start} s; Result: {result}")
 
+        if format == "full":
+            stats["Average accuracy"] = result
             return stats
         else:
-            return mean(avgPerformances)
+            return result
 
     def evaluate(self): # this method is used be autotuner
         # will train the model on upon-selected set of parameters and test it's performance
         self.train()
 
         self.trainCorpus.reset()
-        result = self.assess(100, silent = True, format = "mean", random_state = 42)
+        result = self.assess(5000, silent = True, format = "mean", random_state = 42)
 
         #self.trainCorpus = CorpusFactory.createFlatTrainDBCorpus_02_04_25_GOOD() # for testing step I must use database adapter for better documents retreival
         #result = self.test(k = 9)

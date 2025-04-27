@@ -284,4 +284,4 @@ class Factory_21_04_25_HIGH:
 
     @classmethod
     def createTestSetAdepter(cls):
-        return FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/train_21-04-25")
+        return FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/test_21-04-25")
