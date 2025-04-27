@@ -22,10 +22,10 @@ from src.Doc2Vec_model import Model
 
 CACHE_FILE_NAME = "cache__02-04-2025__(good)_{0}.json"
 
-MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/26-04-25_Doc2Vec.model"
-RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/26-04-25_evaluatuin.result"
-TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/26-04-25_autotunning.log"
-TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/26-04-25_training.log"
+MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/27-04-25_Doc2Vec.model"
+RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/27-04-25_evaluatuin.result"
+TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/27-04-25_autotunning.log"
+TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/27-04-25_training.log"
 
 
 adapter = createAdapter_02_04_25_GOOD()#JSONMultiFileAdapter(CACHE_FILE_NAME)
@@ -76,12 +76,12 @@ def saveModel(model):
 def main():
     start = time()
     parameters = [
-        Param(_name = "vector_size", _type = Integer,  _range = (180, 210),   _initial = 200), # 185
-        Param(_name = "window",      _type = Integer,  _range = (5, 10),      _initial = 7),
-        Param(_name = "min_count",   _type = Integer,  _range = (7, 13),      _initial = 7),
-        Param(_name = "epochs",      _type = Integer,  _range = (30, 45),     _initial = 35),
-        Param(_name = "negative",    _type = Integer,  _range = (5, 13),      _initial = 13), # 5
-        Param(_name = "sample",      _type = Real,     _range = (1e-6, 1e-5), _initial = 1e-5),
+        Param(_name = "vector_size", _type = Integer,  _range = (175, 220),   _initial = 200), # 185
+        Param(_name = "window",      _type = Integer,  _range = (5, 15),      _initial = 7),
+        Param(_name = "min_count",   _type = Integer,  _range = (7, 15),      _initial = 9),
+        Param(_name = "epochs",      _type = Integer,  _range = (35, 50),     _initial = 40),
+        Param(_name = "negative",    _type = Integer,  _range = (5, 20),      _initial = 5), # 5
+        Param(_name = "sample",      _type = Real,     _range = (1e-5, 1e-3), _initial = 1e-5),
     ]
 
     tuner = AutoTuner(createModel, parameters)
