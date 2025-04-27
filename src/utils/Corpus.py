@@ -12,7 +12,7 @@ from copy import deepcopy
 
 from gensim.models.doc2vec import TaggedDocument
 
-from src.utils.CacheAdapter import CacheAdapter, JSONAdapter, JSONMultiFileAdapter, EXP_END_OF_DATA, createTrainSetAdapter_02_04_25_GOOD, Factory_21_04_25_HIGH as CacheFactory
+from src.utils.CacheAdapter import CacheAdapter, JSONAdapter, JSONMultiFileAdapter, EXP_END_OF_DATA, createTrainSetAdapter_02_04_25_GOOD, Factory_21_04_25_HIGH
 from src.utils.DatasetManager import ProjectsDatasetManager
 from src.utils.validators import projectDataIsSufficient
 from src.utils.helpers import flatternData
@@ -115,13 +115,16 @@ class FlatCorpus(Corpus):
         return [TaggedDocument(words = doc["tokens"], tags = doc["tags"]) for doc in self.adapter[_indexes]]
 
 class MemoryCorpus(CacheCorpus):
-    def __init__(self, adapter = None, limit = np.inf):
+    def __init__(self, adapter = None, limit = np.inf, includeOnlyID = True):
         self.limit = limit
         self.adapter = adapter
         self.position = 0
         self.data = tuple([TaggedDocument(words = doc["tokens"], tags = doc["tags"]) for doc in adapter.load(limit)])
-        adapter.reset()
-        self.dataOnlyID = tuple([TaggedDocument(words = doc["tokens"], tags = doc["tags"][:1]) for doc in adapter.load(limit)])
+        self.dataOnlyID = tuple()
+
+        if includeOnlyID:
+            self.dataOnlyID = tuple([TaggedDocument(words = doc.words, tags = doc.tags[:1]) for doc in self.data])
+
         self.len = len(self.data)
         self.workingList = self.data
 
@@ -130,6 +133,9 @@ class MemoryCorpus(CacheCorpus):
 
     def onlyID(self, val):
         if val:
+            if len(self.dataOnlyID) == 0: # array with only ids is empty
+                self.dataOnlyID = tuple([TaggedDocument(words = doc.words, tags = doc.tags[:1]) for doc in self.data])
+
             self.workingList = self.dataOnlyID
         else:
             self.workingList = self.data
@@ -172,27 +178,29 @@ class Factory_02_04_25:
 
 
 class Factory_21_04_25_HIGH:
+    CacheFactory = Factory_21_04_25_HIGH
+
     @classmethod
     def createNormCorpus(cls, limit = np.inf):
-        adapter = CacheFactory.createNormAdapter()
+        adapter = Factory_21_04_25_HIGH.createNormAdapter()
         return MemoryCorpus(adapter, limit = limit)
 
     @classmethod
     def createFlatCorpus(cls, limit = np.inf):
-        adapter = CacheFactory.createFlatAdapter()
+        adapter = Factory_21_04_25_HIGH.createFlatAdapter()
         return FlatCorpus(adapter, limit = limit)
 
     @classmethod
     def createFlatTrainCorpus(cls, limit = np.inf):
-        adapter = CacheFactory.createTrainSetAdapter()
-        return FlatCorpus(adapter, limit = limit)
-
-    @classmethod
-    def createTrainDBCorpus(cls, limit = np.inf):
-        adapter = CacheFactory.createTrainSetDBadepter()
-        return FlatCorpus(adapter, limit = limit)
+        adapter = Factory_21_04_25_HIGH.createTrainSetAdapter()
+        return MemoryCorpus(adapter, limit = limit)
 
     @classmethod
     def createFlatTestCorpus(cls, limit = np.inf):
-        adapter = CacheFactory.createTestSetAdapter()
+        adapter = Factory_21_04_25_HIGH.createTestSetAdapter()
+        return MemoryCorpus(adapter, limit = limit)
+
+    @classmethod
+    def createTrainDBCorpus(cls, limit = np.inf):
+        adapter = Factory_21_04_25_HIGH.createTrainSetDBadepter()
         return FlatCorpus(adapter, limit = limit)
