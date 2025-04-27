@@ -14,7 +14,7 @@ import logging
 from src.utils.CacheAdapter import JSONAdapter, JSONMultiFileAdapter, EXP_END_OF_DATA
 from src.utils.DatasetManager import ProjectsDatasetManager
 from src.utils.validators import projectDataIsSufficient
-from src.utils.Corpus import Corpus, CorpusFactory
+from src.utils.Corpus import Corpus
 from src.utils.helpers import normalize
 
 import gensim
@@ -172,7 +172,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
 
         log = lambda s: print(s) if not silent else None
         #performanceGrageScale = {50 : "Random", 60 : "Poor", 70 : "Bad", 80 : "Medium", 92 : "Optimal", 97 : "Perfect"}
-        totalDocuments = self.trainCorpus_count
+        totalDocuments = self.corpus_count
         if random_state != None: randomSeed(random_state)
         indexes = sample(range(totalDocuments), sampleNum)
         if format == "full":
@@ -181,28 +181,26 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         i = 0
         avgPerformances = []
 
-        for doc in self.trainCorpus:
-            if i >= totalDocuments: break
-            if i in indexes:
-                vector = self.infer_vector(doc.words)
-                sims = defaultdict(lambda: 0, self.dv.most_similar([vector], topn = totalDocuments))
+        for doc in self.trainCorpus[indexes]:
+            vector = self.infer_vector(doc.words)
+            sims = defaultdict(lambda: 0, self.dv.most_similar([vector], topn = int(totalDocuments * 0.3)))
+            log(f"Assessing document {i} ({doc.tags}). Similarities by tags:")
 
-                log(f"Assessing document {i} ({doc.tags}). Similarities by tags:")
+            if format == "full":
+                stats[i] = {
+                    "similarities by tags" : {},
+                    "average" : 0
+                }
+            
+            for tag in doc.tags:
                 if format == "full":
-                    stats[i] = {
-                        "similarities by tags" : {},
-                        "average" : 0
-                    }
-
-                for tag in doc.tags:
-                    if format == "full":
-                        stats[i]["similarities by tags"][tag] = sims[tag]
-                    log(f"  {tag} : {sims[tag]}")
-
-                avgPerformances.append(mean([sims[tag] for tag in doc.tags]))
-                log(f"\n  Average similarity value: {avgPerformances[-1]}\n")
-                if format == "full":
-                    stats[i]["average"] = avgPerformances[-1]
+                    stats[i]["similarities by tags"][tag] = sims[tag]
+                log(f"  {tag} : {sims[tag]}")
+            avgPerformances.append(mean([sims[tag] for tag in doc.tags]))
+            log(f"\n  Average similarity value: {avgPerformances[-1]}\n")
+            
+            if format == "full":
+                stats[i]["average"] = avgPerformances[-1]
             i += 1
 
         if format == "full":
@@ -217,9 +215,11 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         # will train the model on upon-selected set of parameters and test it's performance
         self.train()
 
-        self.trainCorpus = CorpusFactory.createFlatTrainDBCorpus_02_04_25_GOOD() # for testing step I must use database adapter for better documents retreival
-        #result = self.test(6000, silent = True, format = "mean", random_state = 42)
-        result = self.test(k = 9)
+        self.trainCorpus.reset()
+        result = self.assess(100, silent = True, format = "mean", random_state = 42)
+
+        #self.trainCorpus = CorpusFactory.createFlatTrainDBCorpus_02_04_25_GOOD() # for testing step I must use database adapter for better documents retreival
+        #result = self.test(k = 9)
 
         if Model.bestScore < result:
             Model.bestScore = result

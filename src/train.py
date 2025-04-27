@@ -22,10 +22,10 @@ from src.Doc2Vec_model import Model
 
 CACHE_FILE_NAME = "cache__02-04-2025__(good)_{0}.json"
 
-MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/17-04-25_Doc2Vec.model"
-RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/17-04-25_evaluatuin.result"
-TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/17-04-25_autotunning.log"
-TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/17-04-25_training.log"
+MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/26-04-25_Doc2Vec.model"
+RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/26-04-25_evaluatuin.result"
+TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/26-04-25_autotunning.log"
+TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/26-04-25_training.log"
 
 
 adapter = createAdapter_02_04_25_GOOD()#JSONMultiFileAdapter(CACHE_FILE_NAME)
@@ -42,6 +42,7 @@ trainCorpus = None
 testCorpus = None
 
 def createModel(**kwargs):
+    global trainCorpus, testCorpus
     model = Model(
                 dm_dbow_mode = "DM", 
                 alpha_init = ALPHA_INIT,
@@ -52,9 +53,9 @@ def createModel(**kwargs):
     #manager.clearData()
     if trainCorpus == None:
         #trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD(50)
-        trainCorpus = CorpusFactory.createNormCorpus(50)
+        trainCorpus = CorpusFactory.createNormCorpus()
     if testCorpus == None:
-        testCorpus = CorpusFactory.createNormCorpus(50)
+        testCorpus = CorpusFactory.createNormCorpus()
 
     trainCorpus.reset()
     testCorpus.reset()
