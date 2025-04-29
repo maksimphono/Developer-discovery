@@ -207,10 +207,10 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         self.train()
 
         self.trainCorpus.reset()
-        result = self.assess(5000, silent = True, format = "mean", random_state = 42)
+        #result = self.assess(5000, silent = True, format = "mean", random_state = 42)
 
         #self.trainCorpus = CorpusFactory.createFlatTrainDBCorpus_02_04_25_GOOD() # for testing step I must use database adapter for better documents retreival
-        #result = self.test(k = 9)
+        result = self.test(k = 15)
 
         if Model.bestScore < result:
             Model.bestScore = result

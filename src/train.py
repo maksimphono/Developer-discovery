@@ -39,6 +39,7 @@ def createModel(**kwargs):
                 dm_dbow_mode = "DM", 
                 alpha_init = ALPHA_INIT,
                 alpha_final = ALPHA_FINAL,
+                workers = 16,
                 **kwargs
             )
 
@@ -67,12 +68,12 @@ def saveModel(model):
 def main():
     start = time()
     parameters = [
-        Param(_name = "vector_size", _type = Integer,  _range = (175, 220),   _initial = 200), # 185
+        Param(_name = "vector_size", _type = Integer,  _range = (170, 220),   _initial = 175), # 185
         Param(_name = "window",      _type = Integer,  _range = (5, 15),      _initial = 7),
-        Param(_name = "min_count",   _type = Integer,  _range = (7, 15),      _initial = 9),
+        Param(_name = "min_count",   _type = Integer,  _range = (7, 15),      _initial = 14),
         Param(_name = "epochs",      _type = Integer,  _range = (35, 50),     _initial = 40),
-        Param(_name = "negative",    _type = Integer,  _range = (5, 20),      _initial = 5), # 5
-        Param(_name = "sample",      _type = Real,     _range = (1e-5, 1e-3), _initial = 1e-5),
+        Param(_name = "negative",    _type = Integer,  _range = (5, 20),      _initial = 18), # 5
+        Param(_name = "sample",      _type = Real,     _range = (1e-5, 1e-3), _initial = 0.0009151125514672825),
     ]
 
     tuner = AutoTuner(createModel, parameters)
