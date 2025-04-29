@@ -20,10 +20,10 @@ from skopt.space import Real, Integer
 from src.utils.AutoTuner import AutoTuner, Param
 from src.Doc2Vec_model import Model
 
-MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/27-04-25_Doc2Vec.model"
-RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/27-04-25_evaluatuin.result"
-TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/27-04-25_autotunning.log"
-TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/27-04-25_training.log"
+MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/29-04-25_Doc2Vec.model"
+RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/29-04-25_evaluatuin.result"
+TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/29-04-25_autotunning.log"
+TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/29-04-25_training.log"
 
 # creating model
 
@@ -102,9 +102,13 @@ def main():
     finally:
         saveModel(tuner.model) # saving model upon completion or in case of error
 
+def completeProcess(*args):
+    # perform custom action upon completion
+    exit(0)
+
 if __name__ == "__main__":    
     AutoTuner.configLogger(TUNER_LOG_PATH)
     Model.configLogger(TRAINING_LOG_PATH)
 
     main()
-    exit(0)
+    completeProcess()
