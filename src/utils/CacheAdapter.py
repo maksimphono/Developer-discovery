@@ -279,9 +279,9 @@ class Factory_21_04_25_HIGH:
         return DBFlatAdapter(collection)
 
     @classmethod
-    def createTrainSetAdepter(cls):
+    def createTrainSetAdapter(cls):
         return FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/train_21-04-25")
 
     @classmethod
-    def createTestSetAdepter(cls):
+    def createTestSetAdapter(cls):
         return FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/test_21-04-25")
