@@ -13,7 +13,8 @@ TOKEN = ""
 with open("/home/trukhinmaksim/src/environment.json") as file:
     TOKEN = load(fp = file)["GITHUB_TOKEN"]
 
-TOKENS = [TOKEN]
+tokens = [TOKEN]
+currentToken = tokens[0]
 
 def decodeFile(fileData : str) -> str:
     return base64.b64decode(fileData).decode('utf-8')
@@ -79,40 +80,61 @@ def extractFromMD(markdown_content):
 
 EXP_TOKEN_EXHAUSTED = Exception("TOKEN EXHAUSTED")
 
+i = 0
+
 async def fetch(session, url):
+    global i
+    #if i == 2: return EXP_TOKEN_EXHAUSTED
+
     async with session.get(url) as response:
         if response.status == 200:
-            if response.headers["X-RateLimit-Remaining"] <= 0: 
-                raise EXP_TOKEN_EXHAUSTED
+            #if i == 2 or int(response.headers["X-RateLimit-Remaining"]) <= 0: 
+            #    return EXP_TOKEN_EXHAUSTED
 
             content = (await response.json())["content"]
             content = decodeFile(content)
             #content = extractFromMD(content)
 
-            return content
+            i += 1
+            print(f"{url} fetched, i = {i}")
+            if i >= 2:
+                return {"content" : content, "remain" : int(3)}
+            else:
+                return {"content" : content, "remain" : int(response.headers["X-RateLimit-Remaining"])}
         else:
-            return ""
+            return {"content" : "", "remain" : 0}
+
             #raise Exception("Error while fitch")
         #return await response.json()
 
-currentToken = TOKENS[0]
+async def rotateTokens():
+    global i
+    print("rotateTokens")
+    tokens.append(tokens.pop(0))
+    i = 0
+    return tokens
 
-async def fetchWithClientSession(tasks = list(), urls = list()):
+
+async def fetchWithClientSession(tokens, tasks = list(), urls = list()):
+    currentToken = tokens[0]
     async with aiohttp.ClientSession(headers={"Authorization": f"token {currentToken}"}) as session:
         #tasks = _tasks
-        for i, url in enumerate(urls[:1]):
-            try:
-                tasks.append(fetch(session, url + "/contents/README.md"))
-            except Exception as exp:
-                if exp is EXP_TOKEN_EXHAUSTED:
-                    # switch token to the next one and continue
-                    
-                    currentToken = TOKEN
-                    return await fetchWithClientSession(tasks = tasks, urls = urls[i:])
+        for i, url in enumerate(urls[:]):
+            #print(f"Prepare to fetch {url}")
+            tasks.append(fetch(session, url + "/contents/README.md"))
 
         #tasks = [fetch(session, url + "/contents/README.md") for url in urls[:1]]
         results = await asyncio.gather(*tasks)
+        if results[-1]["remain"] < 10:
+            await rotateTokens()
         return results
+"""
+        for i in range(len(results)):
+            if results[i] == EXP_TOKEN_EXHAUSTED:
+                #print(urls[i:])
+                results.extend(await fetchWithClientSession(await rotateTokens(), urls = urls[i:]))
+                break
+"""
         #print(*results, sep = "\n\n")
         #print(f"Time = {time() - start}")
 
@@ -129,9 +151,12 @@ async def main():
         "https://api.github.com/repos/react-native-image-picker/react-native-image-picker"
     ]
 
+    #currentToken = tokens[0]
+    i = 0
     start = time()
-    results = await fetchWithClientSession(urls = urls)
-    print(results)
+    results = await fetchWithClientSession(tokens, urls = urls)
+    results = [r["content"][:10] for r in results]
+    print(*results, sep = "\n" * 4)
     print(f"Time = {time() - start}")
 
 
