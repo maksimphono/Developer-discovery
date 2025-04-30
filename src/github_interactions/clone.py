@@ -23,7 +23,7 @@ with open("/home/trukhinmaksim/src/environment.json") as file:
 tokens = TOKENS
 currentToken = tokens[0]
 PORTION_SIZE = 10
-SKIP = 16590 + 16030 + 1570
+SKIP = 16590 + 16030 + 1570 + 2830
 INITIAL_TOKENS_ROTATION = 4
 
 def decodeFile(fileData : str) -> str:
@@ -198,7 +198,7 @@ async def main():
             counter += len(results)
 
             if j % 1000 == 0:
-                print(f"Scaned {j + PORTION_SIZE} repos; last: ({urlsLst[j + PORTION_SIZE]}); token : {tokens[0]}")
+                print(f"Scaned {j + PORTION_SIZE} repos; last: ({urlsLst[j + PORTION_SIZE - 1]}); token : {tokens[0]}")
                 print(f"Content: {results[-1][:20]}\n")
                 print(f"Total {counter} readme files were saved in {time() - start} s")
 
