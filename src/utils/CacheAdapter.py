@@ -87,7 +87,7 @@ class FlatAdapter(CacheAdapter):
     def save(self, data):
         with open(os.path.join(PREPROCESSED_DATA_CACHE_PATH, self.collectionName), "a+", encoding = "utf-8") as writeFp:
             for doc in data:
-                json.dump(doc, fp = writeFp, ensure_ascii = False, separators=(',', ':'))
+                json.dump(doc, fp = writeFp, ensure_ascii = False, indent = 4, separators=(',', ':'))
                 writeFp.write("\n")
 
         return data
