@@ -1,20 +1,26 @@
+import sys
+sys.path.append('/home/trukhinmaksim/src')
+
 from json import load
 import requests
 import base64
-from time import time
+from time import time, sleep
 import asyncio
 import aiohttp
 import markdown
 import re
 from lxml import html
 
+from src.utils.CacheAdapter import FlatAdapter
+
 TOKEN = ""
 
 with open("/home/trukhinmaksim/src/environment.json") as file:
-    TOKEN = load(fp = file)["GITHUB_TOKEN"]
+    TOKENS = load(fp = file)["GITHUB_TOKENS"]
 
-tokens = [TOKEN]
+tokens = TOKENS
 currentToken = tokens[0]
+PORTION_SIZE = 2
 
 def decodeFile(fileData : str) -> str:
     return base64.b64decode(fileData).decode('utf-8')
@@ -88,76 +94,87 @@ async def fetch(session, url):
 
     async with session.get(url) as response:
         if response.status == 200:
-            #if i == 2 or int(response.headers["X-RateLimit-Remaining"]) <= 0: 
-            #    return EXP_TOKEN_EXHAUSTED
-
             content = (await response.json())["content"]
             content = decodeFile(content)
-            #content = extractFromMD(content)
 
-            i += 1
-            print(f"{url} fetched, i = {i}")
-            if i >= 2:
-                return {"content" : content, "remain" : int(3)}
-            else:
-                return {"content" : content, "remain" : int(response.headers["X-RateLimit-Remaining"])}
+            #print(f"{url} fetched, i = {i}")
+            return {"content" : content, "remain" : int(response.headers["X-RateLimit-Remaining"]), "exhausted" : False}
         else:
-            return {"content" : "", "remain" : 0}
+            print(f"Got response code = {response.status}")
+            if response.status == 403 or response.status == 429: # rate limit exceeded
+                return {"content" : "", "remain" : 0, "exhausted" : True, "reset" : int(response.headers["X-RateLimit-Reset"])}
+            return {"content" : "", "remain" : 0, "exhausted" : False, "remain" : int(response.headers["X-RateLimit-Remaining"])}
 
             #raise Exception("Error while fitch")
         #return await response.json()
 
 async def rotateTokens():
-    global i
-    print("rotateTokens")
     tokens.append(tokens.pop(0))
-    i = 0
+    print(f"Rotate tokens; token : {tokens[0]}")
     return tokens
 
 
-async def fetchWithClientSession(tokens, tasks = list(), urls = list()):
+async def fetchWithClientSession(tokens, urls = list()):
     currentToken = tokens[0]
+    tasks = list()
     async with aiohttp.ClientSession(headers={"Authorization": f"token {currentToken}"}) as session:
         #tasks = _tasks
-        for i, url in enumerate(urls[:]):
+        for url in urls:
             #print(f"Prepare to fetch {url}")
             tasks.append(fetch(session, url + "/contents/README.md"))
 
         #tasks = [fetch(session, url + "/contents/README.md") for url in urls[:1]]
         results = await asyncio.gather(*tasks)
-        if results[-1]["remain"] < 10:
-            await rotateTokens()
-        return results
-"""
-        for i in range(len(results)):
-            if results[i] == EXP_TOKEN_EXHAUSTED:
-                #print(urls[i:])
-                results.extend(await fetchWithClientSession(await rotateTokens(), urls = urls[i:]))
-                break
-"""
-        #print(*results, sep = "\n\n")
-        #print(f"Time = {time() - start}")
+
+        if results[-1]["remain"] < PORTION_SIZE: # if the token will be exhausted on the next portion
+            if results[-1]["exhausted"]:
+                # token exhausted, wait until it resets and try again
+                print(f"Token will reset in {results[-1]['reset'] - time()} s, sleeping...")
+                sleep(abs(results[-1]["reset"] - time()) + 10)
+                return await fetchWithClientSession(tokens, urls) # try again after sleep (potentially token must reset during that time)
+            else:
+                await rotateTokens()
+
+        return [result["content"] for result in results]
+
 
 async def main():
-    print("main")
+    print("Welcome")
 
+    readmeAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_30-04-25/raw_readme_30-04-25")
     start = time()
-    urls = [
-        "https://api.github.com/repos/spotify/scio",
-        "https://api.github.com/repos/guanzhi/GmSSL",
-        "https://api.github.com/repos/kn007/silk-v3-decoder",
-        "https://api.github.com/repos/log4cplus/log4cplus",
-        "https://api.github.com/repos/alibaba/MNN",
-        "https://api.github.com/repos/react-native-image-picker/react-native-image-picker"
-    ]
+    urlsLst = []
+    ids = []
+    with open("/home/trukhinmaksim/src/data/cache_30-04-25/urls.json", "r", encoding = "utf-8") as file:
+        urlsLst = json.load(fp = file)
+    
+    with open("/home/trukhinmaksim/src/data/cache_30-04-25/ids.json", "r", encoding = "utf-8") as file:
+        ids = json.load(fp = file)
 
     #currentToken = tokens[0]
     i = 0
-    start = time()
-    results = await fetchWithClientSession(tokens, urls = urls)
-    results = [r["content"][:10] for r in results]
-    print(*results, sep = "\n" * 4)
-    print(f"Time = {time() - start}")
+    counter = 0
+    start = time() #len(urlsLst)
+    try:
+        for j in range(0, len(urlsLst), PORTION_SIZE):
+            results = await fetchWithClientSession(tokens, urls = urlsLst[j:j + PORTION_SIZE])
+            d = zip(ids[j:j + PORTION_SIZE], results)
+            #print([r[:10] for r in results])
+            readmeAdapter.write([{"proj_id" : proj_id, "readme" : readme} for proj_id, readme in d])
+            counter += len(results)
+
+            if j % 1000 == 0:
+                print(f"Scanning {j}'th repo ({urlsLst[j]}); token : {tokens[0]}")
+                print(f"Content: {results[0][:20]}\n")
+                print(f"Total {counter} readme files were saved in {time() - start} s")
+
+    except Exception as exp:
+        print(f"Got exception during execution:", str(exp))
+        raise exp
+    finally:
+        #print(*results, sep = "\n" * 4)
+        print(f"Saved {counter} readme files")
+        print(f"Process completed in {time() - start}")
 
 
 url = f"https://api.github.com/repos/{owner}/{repo}"
