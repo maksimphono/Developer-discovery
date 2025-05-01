@@ -33,9 +33,9 @@ with open("/home/trukhinmaksim/src/environment.json") as file:
 
 tokens = TOKENS
 currentToken = tokens[0]
-PORTION_SIZE = 10
-SKIP = 70320 + 40770 + 300 + 4230 + 3300 + 82100 + 13290 + 9590 #16590 + 16030 + 1570 + 2830
-INITIAL_TOKENS_ROTATION = 1
+PORTION_SIZE = 25
+SKIP = 70320 + 40770 + 300 + 4230 + 3300 + 82100 + 13290 + 9590 + 40120 + 1140 + 3850 + 13480 + 600 + 11680 + 4680 + 11740 #16590 + 16030 + 1570 + 2830
+INITIAL_TOKENS_ROTATION = 4
 
 CLONE_LOCATION = "/home/trukhinmaksim/src/data/cache_30-04-25/repo"
 
@@ -145,10 +145,41 @@ async def readFromClone(url):
     except Exception as exp:
         print(f"Clone failed ({url}), error: {str(exp)}")
 
+def handleBadResponse(response, url, message = ""):
+    if response.status == 403 or response.status == 429: # rate limit exceeded
+        logging.info(f"Got response code = {response.status} ({url})")
+        print(f"Got response code = {response.status} ({url})")
+        print({"reset" : int(response.headers["X-RateLimit-Reset"]), "message" : message})
+        if message == "Repository access blocked":
+            return {"content" : "", "remain" : int(response.headers["X-RateLimit-Remaining"]), "exhausted" : False, "reset" : int(response.headers["X-RateLimit-Reset"])}
+        else:
+            return {"content" : "", "remain" : 0, "exhausted" : True, "reset" : int(response.headers["X-RateLimit-Reset"])}
+    if response.status == 404:
+        print(f"Not found: {str(url)}")
+        logging.info(f"Not found: {str(url)}")
+    return {"content" : "", "remain" : 0, "exhausted" : False, "remain" : int(response.headers["X-RateLimit-Remaining"])}
+
+
+async def fetchReadmeUrl(session, url):
+    async with session.get(url) as response:
+        if response.status == 200:
+            for item in await response.json():
+                if "readme" in item["name"].lower():
+                    return (url + "/" + item["name"], None)
+
+            return ("", {"content" : "", "remain" : int(response.headers["X-RateLimit-Remaining"]), "exhausted" : False, "reset" : int(response.headers["X-RateLimit-Reset"])})
+        else:
+            return ("", handleBadResponse(response, url, (await response.json())["message"]))
+
+
 
 async def fetch(session, url, retryingAttempt = 0):
     try:
-        async with session.get(url) as response:
+        readmeUrl, error = await fetchReadmeUrl(session, url)
+        if error:
+            return error
+
+        async with session.get(readmeUrl) as response:
             if response.status == 200:
                 try:
                     content = (await response.json())["content"]
@@ -156,25 +187,14 @@ async def fetch(session, url, retryingAttempt = 0):
                     return {"content" : content, "remain" : int(response.headers["X-RateLimit-Remaining"]), "exhausted" : False, "reset" : int(response.headers["X-RateLimit-Reset"])}
                 except KeyError:
                     return {"content" : "", "remain" : int(response.headers["X-RateLimit-Remaining"]), "exhausted" : False, "reset" : int(response.headers["X-RateLimit-Reset"])}
+                except TypeError:
+                    return {"content" : "", "remain" : int(response.headers["X-RateLimit-Remaining"]), "exhausted" : False, "reset" : int(response.headers["X-RateLimit-Reset"])}
 
                 #print(f"{url} fetched, i = {i}")
 
             else:
                 #print(f"Got response code = {response.status}")
-                if response.status == 403 or response.status == 429: # rate limit exceeded
-                    logging.info(f"Got response code = {response.status} ({url})")
-                    print(f"Got response code = {response.status} ({url})")
-                    print({"reset" : int(response.headers["X-RateLimit-Reset"]), "message" : (await response.json())["message"]})
-
-                    if input(">>> ") == "s":
-                        return {"content" : "", "remain" : int(response.headers["X-RateLimit-Remaining"]), "exhausted" : False, "reset" : int(response.headers["X-RateLimit-Reset"])}
-                    else:
-                        return {"content" : "", "remain" : 0, "exhausted" : True, "reset" : int(response.headers["X-RateLimit-Reset"])}
-
-                if response.status == 404:
-                    print(f"Not found: {str(url)}")
-                    logging.info(f"Not found: {str(url)}")
-                return {"content" : "", "remain" : 0, "exhausted" : False, "remain" : int(response.headers["X-RateLimit-Remaining"])}
+                return handleBadResponse(response, readmeUrl, (await response.json())["message"])
 
                 #raise Exception("Error while fitch")
             #return await response.json()
@@ -207,14 +227,14 @@ async def fetchWithClientSession(tokens, urls = list(), tokenRotateCount = 0):
         #tasks = _tasks
         for url in urls:
             #print(f"Prepare to fetch {url}")
-            tasks.append(fetch(session, url + "/contents/README.md"))
+            tasks.append(fetch(session, url + "/contents"))
 
         results = await asyncio.gather(*tasks)
 
-        if results[-1]["remain"] < PORTION_SIZE: # if the token will be exhausted on the next portion
+        if any((result["remain"] < PORTION_SIZE * 2 for result in results)): # if the token will be exhausted on the next portion
             if any((result["exhausted"] for result in results)):
                 # token exhausted, wait until it resets and try again
-                if tokenRotateCount >= 5:
+                if tokenRotateCount >= len(tokens):
                     print(f"Token will reset in {results[-1]['reset'] - time()} s, sleeping...")
                     logging.info(f"Token will reset in {results[-1]['reset'] - time()} s, sleeping...")
                     await asyncio.sleep(abs(results[-1]["reset"] - time()) + 10)
@@ -271,7 +291,7 @@ async def main():
             counter += len(results)
             totalCounter += len(results)
 
-            if j % 1000 == 0:
+            if j % 2000 == 0:
                 print(f"Scaned {totalCounter} repos in total; last: ({urlsLst[totalCounter - 1]}); token : {tokens[0]}")
                 print(f"Content: {results[-1][:20]}\n")
                 print(f"{counter} readme files were saved in {time() - start} s")
