@@ -17,3 +17,4 @@ github_token*
 /environment*
 environment.yml
 logs/21-04-25_tagsDistribution
+src/__pycache__/*

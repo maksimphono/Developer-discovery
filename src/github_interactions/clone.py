@@ -13,6 +13,8 @@ from lxml import html
 from random import random
 import json
 import logging
+import subprocess
+import os
 
 from src.utils.CacheAdapter import FlatAdapter
 
@@ -32,11 +34,16 @@ with open("/home/trukhinmaksim/src/environment.json") as file:
 tokens = TOKENS
 currentToken = tokens[0]
 PORTION_SIZE = 10
-SKIP = 70320 + 40770 + 300 + 4230 + 3300 #16590 + 16030 + 1570 + 2830
-INITIAL_TOKENS_ROTATION = 0
+SKIP = 70320 + 40770 + 300 + 4230 + 3300 + 82100 + 13290 + 9590 #16590 + 16030 + 1570 + 2830
+INITIAL_TOKENS_ROTATION = 1
+
+CLONE_LOCATION = "/home/trukhinmaksim/src/data/cache_30-04-25/repo"
 
 def decodeFile(fileData : str) -> str:
-    return base64.b64decode(fileData).decode('utf-8')
+    try:
+        return base64.b64decode(fileData).decode('utf-8')
+    except UnicodeDecodeError:
+        return ""
 
 owner = "iamkun"
 repo = "dayjs"
@@ -100,6 +107,44 @@ def extractFromMD(markdown_content):
 EXP_TOKEN_EXHAUSTED = Exception("TOKEN EXHAUSTED")
 
 i = 0
+
+async def clone(repo_url):
+    # executes teminal command to clone repository
+    destination = os.path.join(CLONE_LOCATION, repo_url[19:].replace("/", "--"))
+    print(f"Cloning {repo_url} to {destination}...")
+    await asyncio.create_subprocess_exec("mkdir", destination)
+    process = await asyncio.create_subprocess_exec(
+        "git", "clone", "--depth", "1", repo_url, destination,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    stdout, stderr = await process.communicate()
+
+    if process.returncode == 0:
+        return destination
+    else:
+        #print(f"Error cloning {repo_url} to {destination}:")
+        if stderr:
+            raise Exception(stderr.decode())
+
+
+async def readFromClone(url):
+    try:
+        path = await clone(url)
+        content = ""
+
+        for root, dirs, files in os.walk(path):
+            for file in files:
+                if "readme" in file.lower():
+                    with open(os.path.join(path, file), encoding = "utf-8") as readmeFile:
+                        content = readmeFile.read()
+                    break
+
+        return {"content" : content}
+
+    except Exception as exp:
+        print(f"Clone failed ({url}), error: {str(exp)}")
+
 
 async def fetch(session, url, retryingAttempt = 0):
     try:
