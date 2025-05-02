@@ -8,6 +8,7 @@ from time import time, sleep
 import asyncio
 import aiohttp
 import markdown
+from pymongo import DESCENDING
 import re
 from lxml import html
 from random import random
@@ -62,44 +63,6 @@ def fetchReadmeFile(repo_url : str) -> str:
 
 EXP_TOKEN_EXHAUSTED = Exception("TOKEN EXHAUSTED")
 
-i = 0
-
-async def clone(repo_url):
-    # executes teminal command to clone repository
-    destination = os.path.join(CLONE_LOCATION, repo_url[19:].replace("/", "--"))
-    print(f"Cloning {repo_url} to {destination}...")
-    await asyncio.create_subprocess_exec("mkdir", destination)
-    process = await asyncio.create_subprocess_exec(
-        "git", "clone", "--depth", "1", repo_url, destination,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
-    )
-    stdout, stderr = await process.communicate()
-
-    if process.returncode == 0:
-        return destination
-    else:
-        #print(f"Error cloning {repo_url} to {destination}:")
-        if stderr:
-            raise Exception(stderr.decode())
-
-
-async def readFromClone(url):
-    try:
-        path = await clone(url)
-        content = ""
-
-        for root, dirs, files in os.walk(path):
-            for file in files:
-                if "readme" in file.lower():
-                    with open(os.path.join(path, file), encoding = "utf-8") as readmeFile:
-                        content = readmeFile.read()
-                    break
-
-        return {"content" : content}
-
-    except Exception as exp:
-        print(f"Clone failed ({url}), error: {str(exp)}")
 
 def handleBadResponse(response, url, message = ""):
     try:
@@ -192,7 +155,7 @@ async def fetchWithClientSession(tokens, urls = list(), tokenRotateCount = 0):
 
         results = await asyncio.gather(*tasks)
 
-        if any((result["remain"] < PORTION_SIZE * 2 for result in results)): # if the token will be exhausted on the next portion
+        if any(("remain" in result and result["remain"] < PORTION_SIZE * 2 for result in results)): # if the token will be exhausted on the next portion
             if any((result["exhausted"] for result in results)):
                 # token exhausted, wait until it resets and try again
                 if tokenRotateCount >= len(tokens):
@@ -230,11 +193,11 @@ async def main():
 
     print(tokens[0])
     i = 0
-    counter = 0
+    counter = 1
     totalCounter = 0
     skip = 0
     start = time() #len(urlsLst)
-    cursor = collection.find({"readme" : ""})
+    cursor = collection.find({"readme" : ""}).sort('_id', DESCENDING)
     start = time()
 
     try:
@@ -246,8 +209,9 @@ async def main():
                 while len(urls) < PORTION_SIZE:
                     try:
                         item = next(cursor)
-                        urls.append("https://api.github.com/repos/" + item["proj_id"][7:])
-                        ids.append(item["proj_id"])
+                        if item["proj_id"] not in reposWithoutReadme:
+                            urls.append("https://api.github.com/repos/" + item["proj_id"][7:])
+                            ids.append(item["proj_id"])
 
                     except StopIteration:
                         if len(urls):
@@ -261,11 +225,10 @@ async def main():
                 for proj_id, readme in d:
                     #print(proj_id, len(readme))
                     if readme == "":
-                        reposWithoutReadme.append(proj_id)
+                        reposWithoutReadme.add(proj_id)
                     else:
                         collection.update_one({"proj_id" : proj_id}, {"$set" : {"readme" : readme}})
-
-                counter += len(results)
+                        counter += 1
 
                 if counter % 1000 == 0:
                     print(f"Collected missing readme: {counter}")
@@ -288,13 +251,13 @@ async def main():
         logging.info(f"Saved {counter} readme files during execution, saved in total: {totalCounter}\nProcess completed in {time() - start}")
 
         with open("/home/trukhinmaksim/src/data/cache_30-04-25/repos_without_readme.json", "w", encoding = "utf-8") as file:
-            json.dump(reposWithoutReadme, fp = file, ensure_ascii = False)
+            json.dump(list(reposWithoutReadme), fp = file, ensure_ascii = False)
 
         print(f"Process completed in {time() - start}")
         
 
 with open("/home/trukhinmaksim/src/data/cache_30-04-25/repos_without_readme.json", encoding = "utf-8") as file:
-    reposWithoutReadme = json.load(fp = file)
+    reposWithoutReadme = set(json.load(fp = file))
 
 #text = fetchReadmeFile(url)
 asyncio.run(main())
