@@ -37,6 +37,7 @@ currentToken = tokens[0]
 PORTION_SIZE = 20
 SKIP = 0
 INITIAL_TOKENS_ROTATION = 0
+reposWithoutReadme = []
 
 CLONE_LOCATION = "/home/trukhinmaksim/src/data/cache_30-04-25/repo"
 
@@ -101,18 +102,23 @@ async def readFromClone(url):
         print(f"Clone failed ({url}), error: {str(exp)}")
 
 def handleBadResponse(response, url, message = ""):
-    if response.status == 403 or response.status == 429: # rate limit exceeded
-        logging.info(f"Got response code = {response.status} ({url})")
-        print(f"Got response code = {response.status} ({url})")
-        print({"reset" : int(response.headers["X-RateLimit-Reset"]), "message" : message})
-        if message == "Repository access blocked":
-            return {"content" : "", "remain" : int(response.headers["X-RateLimit-Remaining"]), "exhausted" : False, "reset" : int(response.headers["X-RateLimit-Reset"])}
-        else:
-            return {"content" : "", "remain" : 0, "exhausted" : True, "reset" : int(response.headers["X-RateLimit-Reset"])}
-    if response.status == 404:
-        print(f"Not found: {str(url)}")
-        logging.info(f"Not found: {str(url)}")
-    return {"content" : "", "remain" : 0, "exhausted" : False, "remain" : int(response.headers["X-RateLimit-Remaining"])}
+    try:
+        if response.status == 403 or response.status == 429: # rate limit exceeded
+            logging.info(f"Got response code = {response.status} ({url})")
+            print(f"Got response code = {response.status} ({url})")
+            print({"reset" : int(response.headers["X-RateLimit-Reset"]), "message" : message})
+            if message == "Repository access blocked":
+                return {"content" : "", "remain" : int(response.headers["X-RateLimit-Remaining"]), "exhausted" : False, "reset" : int(response.headers["X-RateLimit-Reset"])}
+            else:
+                return {"content" : "", "remain" : 0, "exhausted" : True, "reset" : int(response.headers["X-RateLimit-Reset"])}
+        if response.status == 404:
+            print(f"Not found: {str(url)}")
+            logging.info(f"Not found: {str(url)}")
+        return {"content" : "", "remain" : 0, "exhausted" : False, "remain" : int(response.headers["X-RateLimit-Remaining"])}
+
+    except KeyError:
+        pass
+        #return {"content" : "", "remain" : 0, "exhausted" : False, "remain" : int(response.headers["X-RateLimit-Remaining"])}
 
 
 async def fetchReadmeUrl(session, url):
@@ -254,7 +260,10 @@ async def main():
 
                 for proj_id, readme in d:
                     #print(proj_id, len(readme))
-                    collection.update_one({"proj_id" : proj_id}, {"$set" : {"readme" : readme}})
+                    if readme == "":
+                        reposWithoutReadme.append(proj_id)
+                    else:
+                        collection.update_one({"proj_id" : proj_id}, {"$set" : {"readme" : readme}})
 
                 counter += len(results)
 
@@ -276,9 +285,16 @@ async def main():
     finally:
         #print(*results, sep = "\n" * 4)
         print(f"Saved {counter} readme files during execution, saved in total: {totalCounter}")
-        print(f"Process completed in {time() - start}")
         logging.info(f"Saved {counter} readme files during execution, saved in total: {totalCounter}\nProcess completed in {time() - start}")
 
+        with open("/home/trukhinmaksim/src/data/cache_30-04-25/repos_without_readme.json", "w", encoding = "utf-8") as file:
+            json.dump(reposWithoutReadme, fp = file, ensure_ascii = False)
+
+        print(f"Process completed in {time() - start}")
+        
+
+with open("/home/trukhinmaksim/src/data/cache_30-04-25/repos_without_readme.json", encoding = "utf-8") as file:
+    reposWithoutReadme = json.load(fp = file)
 
 #text = fetchReadmeFile(url)
 asyncio.run(main())
