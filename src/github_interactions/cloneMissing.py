@@ -16,12 +16,13 @@ import logging
 import subprocess
 import os
 
-from src.utils.CacheAdapter import FlatAdapter
+from src.utils.CacheAdapter import FlatAdapter, EXP_END_OF_DATA
+from src.utils.DatabaseConnect import CacheConnector
 
 #30-04-25_snan_readme(403).log
 
 logging.basicConfig(
-    filename="/home/trukhinmaksim/src/logs/01-05-25_scan_readme.log",
+    filename="/home/trukhinmaksim/src/logs/02-05-25_scan_missing_readme.log",
     format='%(asctime)s : %(levelname)s : %(message)s',
     level=logging.INFO
 )
@@ -33,8 +34,8 @@ with open("/home/trukhinmaksim/src/environment.json") as file:
 
 tokens = TOKENS
 currentToken = tokens[0]
-PORTION_SIZE = 25
-SKIP = 70320 + 40770 + 300 + 4230 + 3300 + 82100 + 13290 + 9590 + 40120 + 1140 + 3850 + 13480 + 600 + 11680 + 4680 + 11740 + 143700 + 15425 #16590 + 16030 + 1570 + 2830
+PORTION_SIZE = 20
+SKIP = 0
 INITIAL_TOKENS_ROTATION = 0
 
 CLONE_LOCATION = "/home/trukhinmaksim/src/data/cache_30-04-25/repo"
@@ -57,52 +58,6 @@ def fetchReadmeFile(repo_url : str) -> str:
         return decodeFile(content)
     else:
         raise Exception("Error while fitch")
-
-# github:guanzhi/GmSSL
-
-def extractFromMD(markdown_content):
-	text = re.sub(r'^#+\s*', '', markdown_content, flags=re.MULTILINE)
-
-	# Remove bold and italic markers (* and **)
-	text = re.sub(r'\*\*', '', text)
-	text = re.sub(r'\*', '', text)
-
-	# Remove inline code (`)
-	text = re.sub(r'`', '', text)
-
-	# Remove blockquotes (lines starting with '>')
-	text = re.sub(r'^>\s*', '', text, flags=re.MULTILINE)
-
-	# Remove unordered list markers (- or *)
-	text = re.sub(r'^-+\s*', '', text, flags=re.MULTILINE)
-
-	# Remove ordered list markers (numbers followed by .)
-	text = re.sub(r'^\d+\.\s*', '', text, flags=re.MULTILINE)
-
-	# Remove links (both inline and reference style)
-	text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'\1', text)	# Inline links
-	text = re.sub(r'\[([^\]]+)\]\[[^\]]+\]', r'\1', text)		# Reference links (without resolving)
-	text = re.sub(r'^\[[^\]]+\]:\s.+', '', text, flags=re.MULTILINE) # Link definitions
-
-	# Remove images (similar to links)
-	text = re.sub(r'!\[([^\]]*)\]\(([^)]+)\)', r'\1', text)
-	text = re.sub(r'!\[([^\]]*)\]\[[^\]]+\]', r'\1', text)
-
-	# Remove horizontal rules (---, ___, ***)
-	text = re.sub(r'^-{3,}\s*$', '', text, flags=re.MULTILINE)
-	text = re.sub(r'^_{3,}\s*$', '', text, flags=re.MULTILINE)
-	text = re.sub(r'^\*{3,}\s*$', '', text, flags=re.MULTILINE)
-
-	# Remove code blocks (```) - simple removal, might leave surrounding text
-	text = re.sub(r'```.*?```', '', text, flags=re.DOTALL)
-
-	# Remove HTML tags (if any are present in the Markdown) - basic removal
-	text = re.sub(r'<[^>]+>', '', text)
-
-	# Remove extra whitespace and newlines
-	text = '\n'.join(line.strip() for line in text.splitlines() if line.strip())
-
-	return text
 
 EXP_TOKEN_EXHAUSTED = Exception("TOKEN EXHAUSTED")
 
@@ -253,20 +208,13 @@ async def main():
     logging.info("Welcome")
 
     readmeAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_30-04-25/raw_readme_30-04-25")
+    collection = CacheConnector("mongodb://10.22.48.31:27020/").collection("raw_readme_30-04-25")
+
     print("Adapter created on /home/trukhinmaksim/src/data/cache_30-04-25/raw_readme_30-04-25")
     logging.info("Adapter created on /home/trukhinmaksim/src/data/cache_30-04-25/raw_readme_30-04-25")
     start = time()
     urlsLst = []
     ids = []
-
-    with open("/home/trukhinmaksim/src/data/cache_30-04-25/urls.json", "r", encoding = "utf-8") as file:
-        urlsLst = json.load(fp = file)
-    
-    with open("/home/trukhinmaksim/src/data/cache_30-04-25/ids.json", "r", encoding = "utf-8") as file:
-        ids = json.load(fp = file)
-
-    print(f"urlsLst = {urlsLst[:5]}")
-    print(f"ids = {ids[:5]}")
     if len(ids) != len(urlsLst):
         print("Different len! Exiting")
         return
@@ -277,26 +225,49 @@ async def main():
     print(tokens[0])
     i = 0
     counter = 0
-    totalCounter = SKIP
-    skip = SKIP
+    totalCounter = 0
+    skip = 0
     start = time() #len(urlsLst)
-    try:
-        print(f"Starting from {skip}")
-        logging.info(f"Starting from {skip}")
-        portionCounter = 0
-        for j in range(skip, len(urlsLst), PORTION_SIZE):
-            results = await fetchWithClientSession(tokens, urls = urlsLst[j:j + PORTION_SIZE])
-            d = zip(ids[j:j + PORTION_SIZE], results)
-            #print([r[:10] for r in results])
-            readmeAdapter.save([{"proj_id" : proj_id, "readme" : readme} for proj_id, readme in d])
-            counter += len(results)
-            totalCounter += len(results)
+    cursor = collection.find({"readme" : ""})
+    start = time()
 
-            if j % 2000 == 0:
-                print(f"Scaned {totalCounter} repos in total; last: ({urlsLst[totalCounter - 1]}); token : {tokens[0]}")
-                print(f"Content: {results[-1][:20]}\n")
-                print(f"{counter} readme files were saved in {time() - start} s")
-                logging.info(f"Scaned {totalCounter} repos; last: ({urlsLst[totalCounter - 1]}); token : {tokens[0]}\nContent: {results[-1][:20]}\n\nTotal {counter} readme files were saved in {time() - start} s\n")
+    try:
+        while True:
+            try:
+                urls = []
+                ids = []
+
+                while len(urls) < PORTION_SIZE:
+                    try:
+                        item = next(cursor)
+                        urls.append("https://api.github.com/repos/" + item["proj_id"][7:])
+                        ids.append(item["proj_id"])
+
+                    except StopIteration:
+                        if len(urls):
+                            break # if something was already marked to fe
+                        else:
+                            raise EXP_END_OF_DATA
+
+                results = await fetchWithClientSession(tokens, urls = urls)
+                d = zip(ids, results)
+
+                for proj_id, readme in d:
+                    #print(proj_id, len(readme))
+                    collection.update_one({"proj_id" : proj_id}, {"$set" : {"readme" : readme}})
+
+                counter += len(results)
+
+                if counter % 1000 == 0:
+                    print(f"Collected missing readme: {counter}")
+                    logging.info(f"Collected missing readme: {counter}")
+
+                #print(f"{PORTION_SIZE} repos were parsed in {time() - start}")
+
+                #if input(">>> ") != "c": break
+
+            except EXP_END_OF_DATA:
+                break
 
     except Exception as exp:
         print(f"Got exception during execution:", str(exp))
@@ -308,8 +279,6 @@ async def main():
         print(f"Process completed in {time() - start}")
         logging.info(f"Saved {counter} readme files during execution, saved in total: {totalCounter}\nProcess completed in {time() - start}")
 
-
-url = f"https://api.github.com/repos/{owner}/{repo}"
 
 #text = fetchReadmeFile(url)
 asyncio.run(main())

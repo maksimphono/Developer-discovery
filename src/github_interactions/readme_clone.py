@@ -166,7 +166,7 @@ async def main():
                     try:
                         item = readmeAdapter.load(1)[0]
                         if len(item["readme"]) == 0: # readme missing, prepare to read it
-                            urls.append("https://github.com/" + item["proj_id"][7:] + ".git")
+                            urls.append("https://api.github.com/repos/" + item["proj_id"][7:])
                             ids.append(item["proj_id"])
 
 
