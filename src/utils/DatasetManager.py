@@ -26,8 +26,9 @@ from googletrans import Translator
 import traceback
 import logging
 
-from src.utils.CacheAdapter import JSONAdapter, CacheAdapter, EXP_END_OF_DATA
+from src.utils.CacheAdapter import JSONAdapter, CacheAdapter, EXP_END_OF_DATA, Factory_21_04_25_HIGH as CacheFactory
 from src.data_processing.collect_projects_data import collectOneProjectData, EXP_NOT_IN_DB
+from src.utils.DatabaseConnect import CacheConnector
 
 def downloadArgosLangPackages(langList = ["es", "pt", "zh", "zt", "ru", "de", "ja", "ko"]):
     argostranslate.package.update_package_index()
@@ -553,4 +554,90 @@ class NewDatasetManager(DatasetManager):
         self.data.clear()
         self.mappedData.clear()
         self.processedProjsIds.clear()
+
+class ReadmeDatasetManager(NewDatasetManager):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        #self.inputAdapter = CacheFactory.createFlatAdapter()
+        self.readmeCollection = CacheConnector("mongodb://10.22.48.31:27020/").collection("raw_readme_30-04-25")
+        self.mapper = self.merge
+
+    def processMarkdown(self, markdown_content):
+    	text = re.sub(r'^#+\s*', '', markdown_content, flags=re.MULTILINE)
+    
+    	# Remove bold and italic markers (* and **)
+    	text = re.sub(r'\*\*', '', text)
+    	text = re.sub(r'\*', '', text)
+    
+    	# Remove inline code (`)
+    	text = re.sub(r'`', '', text)
+    
+    	# Remove blockquotes (lines starting with '>')
+    	text = re.sub(r'^>\s*', '', text, flags=re.MULTILINE)
+    
+    	# Remove unordered list markers (- or *)
+    	text = re.sub(r'^-+\s*', '', text, flags=re.MULTILINE)
+    
+    	# Remove ordered list markers (numbers followed by .)
+    	text = re.sub(r'^\d+\.\s*', '', text, flags=re.MULTILINE)
+    
+    	# Remove links (both inline and reference style)
+    	text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'\1', text)	# Inline links
+    	text = re.sub(r'\[([^\]]+)\]\[[^\]]+\]', r'\1', text)		# Reference links (without resolving)
+    	text = re.sub(r'^\[[^\]]+\]:\s.+', '', text, flags=re.MULTILINE) # Link definitions
+    
+    	# Remove images (similar to links)
+    	text = re.sub(r'!\[([^\]]*)\]\(([^)]+)\)', r'\1', text)
+    	text = re.sub(r'!\[([^\]]*)\]\[[^\]]+\]', r'\1', text)
+    
+    	# Remove horizontal rules (---, ___, ***)
+    	text = re.sub(r'^-{3,}\s*$', '', text, flags=re.MULTILINE)
+    	text = re.sub(r'^_{3,}\s*$', '', text, flags=re.MULTILINE)
+    	text = re.sub(r'^\*{3,}\s*$', '', text, flags=re.MULTILINE)
+    
+    	# Remove code blocks (```) - simple removal, might leave surrounding text
+    	text = re.sub(r'```.*?```', '', text, flags=re.DOTALL)
+    
+    	# Remove HTML tags (if any are present in the Markdown) - basic removal
+    	text = re.sub(r'<[^>]+>', '', text)
+    
+    	# Remove extra whitespace and newlines
+    	text = '\n'.join(line.strip() for line in text.splitlines() if line.strip())
+
+    	return text
+
+    def translateText(self, text, retryAttept = 3, useServer = False):
+        parts = text.split("\n")
+        translated = []
+
+        for part in parts:
+            translated.append(super().translateText(part, retryAttept, useServer))
+
+        return " ".join(translated)
+
+    def merge(self, doc):
+        while True:
+            # loop for retrying
+            try:
+                proj_id = doc["tags"][0]
+                readme = self.readmeCollection.find_one({"proj_id" : proj_id})["readme"]
+                readmeText = self.processMarkdown(readme)
+                preprocessed = self.textPreprocessing(readmeText)
+
+                doc["tokens"].extend(preprocessed)
+                #result = self.projectDataPreprocessing(project)
+                #self.processedProjsIds.append(project["id"])
+                return doc
+            except NewDatasetManager.EXP_CONNECTION_LOSS as exp:
+                if self.handleConnectionLoss():
+                    continue # try again
+                else:
+                    self.interruptGracefully(f"Falied to fix error :(\nError occured while scanning {project['proj_id']}")
+            except Exception as exp:
+                if self.handleException():
+                    continue
+                else:
+                    self.interruptGracefully(f"Falied to fix error :(\nError occured while scanning {project['proj_id']}")
+
+
 
