@@ -86,7 +86,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
 
     
     def __init__(self, dm_dbow_mode = "DM", pretrain_w2v = False, alpha_init = 0.05, alpha_final = 0.001, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(dm = (1 if dm_dbow_mode == "DM" else 0), *args, **kwargs)
         self.trainCorpus = None # corpus is an iterator(iterable class object), that will be used in "train" method of Doc2Vec model for data extraction
         self.testCorpus = None # corpuses should be static structures, that are not changing in process of evaluation
         self.alphaInit = alpha_init
