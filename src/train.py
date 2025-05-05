@@ -20,10 +20,10 @@ from skopt.space import Real, Integer
 from src.utils.AutoTuner import AutoTuner, Param
 from src.Doc2Vec_model import Model
 
-MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/29-04-25_Doc2Vec.model"
-RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/29-04-25_evaluatuin.result"
-TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/29-04-25_autotunning.log"
-TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/29-04-25_training.log"
+MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/03-05-25_Doc2Vec.model"
+RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/03-05-25_evaluatuin.result"
+TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/03-05-25_autotunning.log"
+TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/03-05-25_training.log"
 
 # creating model
 
@@ -36,7 +36,7 @@ testCorpus = None
 def createModel(**kwargs):
     global trainCorpus, testCorpus
     model = Model(
-                dm_dbow_mode = "DM", 
+                dm_dbow_mode = "DBOW", 
                 alpha_init = ALPHA_INIT,
                 alpha_final = ALPHA_FINAL,
                 workers = 16,
@@ -68,7 +68,7 @@ def saveModel(model):
 def main():
     start = time()
     parameters = [
-        Param(_name = "vector_size", _type = Integer,  _range = (170, 220),   _initial = 175), # 185
+        Param(_name = "vector_size", _type = Integer,  _range = (150, 220),   _initial = 175), # 185
         Param(_name = "window",      _type = Integer,  _range = (5, 15),      _initial = 7),
         Param(_name = "min_count",   _type = Integer,  _range = (7, 15),      _initial = 14),
         Param(_name = "epochs",      _type = Integer,  _range = (35, 50),     _initial = 40),
@@ -84,7 +84,7 @@ def main():
         tuner.logger.info(f"\nAutotuner object created successfully with parameters: {[p.name for p in parameters]}\n")
         tuner.logger.info("Starting process of autotunning...\n")
     
-        results = tuner.tune(21)
+        results = tuner.tune(25)
 
         end = time()
         tuner.logger.info(f"\n\nProcess completed in {(end - start) / 60} min\n")
