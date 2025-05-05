@@ -123,7 +123,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
 
 
     def selectKmostSimilar(self, vector, k):
-        return [p[0] for p in self.dv.most_similar([vector], k)]
+        return [int(p[0]) for p in self.dv.most_similar([vector], topn = k)]
 
     def checkRelevants(self, indexes, tags):
         results = np.zeros(len(indexes))
