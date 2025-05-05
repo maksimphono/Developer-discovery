@@ -123,10 +123,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
 
 
     def selectKmostSimilar(self, vector, k):
-        simsIndexes = [(0, -np.inf)] # works like monotonic stack, projects with higher score are pushed higher (closer to the end)
-        query = vector
-
-        return simsIndexes
+        return [p[0] for p in self.dv.most_similar([vector], k)]
 
     def checkRelevants(self, indexes, tags):
         results = np.zeros(len(indexes))
@@ -145,14 +142,14 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         with open(os.devnull, 'w') as f:
             with redirect_stdout(f): # redirect standard output into void, so 'annoy' doesn't print anything
         
-                searcher = AnnoySearcher.create(self.dv.vectors)
+                #searcher = AnnoySearcher.create(self.dv.vectors)
 
                 self.trainCorpus.onlyID(False) # for testing all tags are needed
-        
+
                 for query in self.testCorpus:
                     vector = self.infer_vector(query.words)
-                    topK = sorted(searcher.selectKmostSimilar(vector, k))
-                    #topK = [p[0] for p in sorted(self.selectKmostSimilar(vector, k), key = lambda pair: pair[0])]
+                    #topK = sorted(searcher.selectKmostSimilar(vector, k))
+                    topK = sorted(self.selectKmostSimilar(vector, k))
 
                     predictedRelevant = np.ones(k)
                     trueRelevant = self.checkRelevants(topK, query.tags)
