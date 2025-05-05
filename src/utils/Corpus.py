@@ -123,7 +123,7 @@ class MemoryCorpus(CacheCorpus):
         self.dataOnlyID = tuple()
 
         if includeOnlyID:
-            self.dataOnlyID = tuple([TaggedDocument(words = doc.words, tags = doc.tags[:1]) for doc in self.data])
+            self.dataOnlyID = tuple([TaggedDocument(words = doc.words, tags = [i]) for i, doc in enumerate(self.data)])
 
         self.len = len(self.data)
         self.workingList = self.data
