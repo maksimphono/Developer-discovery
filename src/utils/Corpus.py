@@ -153,6 +153,21 @@ class MemoryCorpus(CacheCorpus):
         return [self.workingList[i] for i in _indexes]
 
 
+class PairsCorpus(MemoryCorpus):
+    def __init__(self, adapter = None, limit = np.inf, includeOnlyID = True):
+        self.limit = limit
+        self.adapter = adapter
+        self.position = 0
+        self.data = tuple([pair for pair in adapter.load(limit)])
+        self.dataOnlyID = tuple()
+
+        self.len = len(self.data)
+        self.workingList = self.data
+
+    def reset(self):
+        self.position = 0
+
+
 from src.utils.CacheAdapter import createTestSetAdapter_02_04_25_GOOD, createTrainSetAdapter_02_04_25_GOOD, createTrainSetDBadepter_02_04_25_GOOD, createTestSetDBadepter_02_04_25_GOOD
 
 class Factory_02_04_25:
