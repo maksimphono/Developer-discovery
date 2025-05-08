@@ -50,6 +50,26 @@ def mydetect(text):
     except lang_detect_exception.LangDetectException:
         return "" # failed detect a language
 
+def checkLength(description, threshold = 15):
+    thresholdsSym = { # threshold for symbols
+        "zh" : 23,
+        "th" : 90,
+        "ja" : 40
+    }
+    thresholdsSp = { # threshold for spaces
+        "ko" : 13,
+        "hi" : 21
+    }
+
+    lang = mydetect(description)
+
+    if lang in thresholdsSym:
+        return thresholdsSym[lang] <= len(re.sub(r"[\s,.!。，?\(\)（）]", "", description))
+    elif lang in thresholdsSp:
+        return thresholdsSp[lang] <= description.count(" ")
+    else:
+        return description.count(" ") >= threshold
+
 def projectDataIsHighQuality(projectData):
     # filters good data (has description and both topics and language, at least 15 spaces)
     # spaces threshold : 15
@@ -61,28 +81,23 @@ def projectDataIsHighQuality(projectData):
             (len(projectData["topics"]) and projectData["language"])
         )): return False
 
-        thresholdsSym = { # threshold for symbols
-            "zh" : 23,
-            "th" : 90,
-            "ja" : 40
-        }
-        thresholdsSp = { # threshold for spaces
-            "ko" : 13,
-            "hi" : 21
-        }
-
-        threshold = 15
-        description = projectData["description"]
-        lang = mydetect(description)
-
-        if lang in thresholdsSym:
-            return thresholdsSym[lang] <= len(re.sub(r"[\s,.!。，?\(\)（）]", "", description))
-        elif lang in thresholdsSp:
-            return thresholdsSp[lang] <= description.count(" ")
-        else:
-            return description.count(" ") >= threshold
+        return checkLength(projectData["description"])
         #projectData["description"].count(" ") >= 13, # at least 13 spaces (hoping to find at least 14 words in the description)
     except KeyError:
         return False
     except TypeError:
         return False
+
+
+def userProjectsIsHighQuality(userData, highQualityProjectsThreshold = 3):
+    project = userData["projects"]
+    counter = 0
+
+    for projText in project.values():
+        if checkLength(projText):
+            counter += 1
+
+        if counter >= highQualityProjectsThreshold:
+            return True
+
+    return False
