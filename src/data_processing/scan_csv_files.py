@@ -331,7 +331,7 @@ class UsersEvaluationAdapter:
         self.proj_info = DatabaseConnector("mongodb://readonlyUser:cictest123456@114.212.84.247:27017/", "developer_discovery").collection("proj_info")
         self.users_db = users_db
         self.priorityCSVfiles = priorityCSVfiles
-        self.limit = 50
+        self.limit = 100
         self.counter = 0
 
     def scan(self, amount = 2):
@@ -356,7 +356,7 @@ class UsersEvaluationAdapter:
                 if textData and textData["name"] and textData["description"]:
                     user["projects"][proj_id] = ". ".join([textData["name"], textData["description"]])
                 else:
-                    user["projects"][proj_id] = ""
+                    del user["projects"][proj_id]
 
         self.counter += 1
         return list(self.users_db.values())

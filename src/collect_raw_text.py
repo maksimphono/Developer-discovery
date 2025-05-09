@@ -27,11 +27,11 @@ logging.basicConfig(
 
 TATAL_SCANNED_PROJECTS = 0
 
-inputAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/test_21-04-25")
+inputAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/train_21-04-25")
 
 #collection = CacheConnector("mongodb://10.22.80.194:27020/").collection("cache_21-04-25")
 #outputDB = DBFlatAdapter(collection)
-outputCache = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/test_text_21-04-25")
+outputCache = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/train_text_21-04-25")
 
 manager = RawTextDatasetManager(
     1000,
