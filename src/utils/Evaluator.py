@@ -10,33 +10,41 @@ from numpy import mean
 from copy import deepcopy
 from scipy.stats import mannwhitneyu
 
+from src.utils.CacheAdapter import Factory_21_04_25_HIGH as CacheFactory
+
 
 class Evaluator:
-    def __init__(self, relatedPairsIdxAdapter, unrelatedPairsIdxAdapter, corpus):
-        # load both sets of pairs
-        try:
-            self.relatedPairs = relatedPairsIdxAdapter.load(np.inf)
-        except EXP_END_OF_DATA:
-            pass
-        try:
-            self.unrelatedPairs = unrelatedPairsIdxAdapter.load(np.inf)
-        except EXP_END_OF_DATA:
-            pass
-
+    def __init__(self, relatedPairsIdxAdapter, unrelatedPairsIdxAdapter, corpus, limit = np.inf):
+        self.limit = limit
         self.corpus = corpus
         self.memorizedVectors = {}
         self.model = None
         self.similarityCheck = lambda v1, v2: 1
         self.relatedPairsSimilarities = []
         self.unrelatedPairsSimilarities = []
+        self.load()
+
+    def load(self):
+        # load both sets of pairs
+        try:
+            self.relatedPairs = relatedPairsIdxAdapter.load(self.limit)
+        except EXP_END_OF_DATA:
+            pass
+        try:
+            self.unrelatedPairs = unrelatedPairsIdxAdapter.load(self.limit)
+        except EXP_END_OF_DATA:
+            pass
+
+    def unload(self):
+        self.relatedPairs.clear()
+        self.unrelatedPairs.clear()
 
     def setModel(self, model):
-        if self.model is not model:
-            # set new model and clear everything, that was produced by the old model
-            self.model = model
-            self.memorizedVectors.clear()
-            self.relatedPairsSimilarities.clear()
-            self.unrelatedPairsSimilarities.clear()
+        # set new model and clear everything, that was produced by the old model
+        self.model = model
+        self.memorizedVectors.clear()
+        self.relatedPairsSimilarities.clear()
+        self.unrelatedPairsSimilarities.clear()
 
     def setSimilarityCheck(self, fn):
         self.similarityCheck = fn
@@ -59,6 +67,44 @@ class Evaluator:
         for pairs, similarities in ((self.relatedPairs, self.relatedPairsSimilarities), (self.unrelatedPairs, self.unrelatedPairsSimilarities)):
             for index1, index2, label in pairs:
                 vec1, vec2 = (self.getVector(index1), self.getVector(index2))
+                simScore = self.similarityCheck(vec1, vec2)
+                similarities.append(simScore)
+
+        return self.statisticalTest(self.relatedPairsSimilarities, self.unrelatedPairsSimilarities)
+
+
+class UsersEvaluator(Evaluator):
+    def __init__(self, aggregate = np.mean):
+        group1, group0 = CacheFactory.createProjectsEvaluationGroups()
+        super().__init__(group1, group0, None, limit = 2200)
+
+        self.aggregate = aggregate
+
+    def getUserVector(self, user):
+        vectors = []
+        for proj_id, text in user["projects"].items():
+            if proj_id in self.memorizedVectors:
+                vectors.append(self.memorizedVectors[proj_id])
+            else:
+                vectors.append(self.model.infer_vector(text))
+                self.memorizedVectors[proj_id] = vectors[-1]
+        
+        return self.aggregate(np.array(vectors))
+
+    def getProjectVector(self, project):
+        proj_id = [*project.keys()][0]
+        if proj_id in self.memorizedVectors:
+            return self.memorizedVectors[proj_id]
+        else:
+            text = [*project.values()][0]
+            vector = self.model.infer_vector(text)
+            self.memorizedVectors[proj_id] = vector
+            return vector
+
+    def evaluate(self, model):
+        for pairs, similarities in ((self.relatedPairs, self.relatedPairsSimilarities), (self.unrelatedPairs, self.unrelatedPairsSimilarities)):
+            for user, project, label in pairs:
+                vec1, vec2 = (self.getUserVector(user), self.getProjectVector(project))
                 simScore = self.similarityCheck(vec1, vec2)
                 similarities.append(simScore)
 
