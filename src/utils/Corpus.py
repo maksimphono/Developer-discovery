@@ -17,6 +17,9 @@ from src.utils.DatasetManager import ProjectsDatasetManager
 from src.utils.validators import projectDataIsSufficient
 from src.utils.helpers import flatternData
 
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
 
 class Corpus:
     # base class for every data corpus, that will be used by model
@@ -115,10 +118,32 @@ class FlatCorpus(Corpus):
         return [TaggedDocument(words = doc["tokens"], tags = doc["tags"]) for doc in self.adapter[_indexes]]
 
 class MemoryCorpus(CacheCorpus):
-    def __init__(self, adapter = None, limit = np.inf, includeOnlyID = True):
+    def __init__(self, adapter = None, limit = np.inf, includeOnlyID = True, createDocument = lambda s: None):
         self.limit = limit
         self.adapter = adapter
         self.position = 0
+        self.data = []
+        self.len = len(self.data)
+        self.workingList = self.data
+
+    def reset(self):
+        self.position = 0
+
+    def __iter__(self):
+        while self.position < self.len:
+            yield self.workingList[self.position]
+
+            self.position += 1
+
+        self.reset()
+
+    def __getitem__(self, _indexes):
+        return [self.workingList[i] for i in _indexes]
+
+
+class Doc2VecCorpus(MemoryCorpus):
+    def __init__(self, adapter = None, limit = np.inf, includeOnlyID = True, createDocument = lambda s: None):
+        super().__init__(adapter = adapter, limit = limit, includeOnlyID = includeOnlyID)
         self.data = tuple([TaggedDocument(words = doc["tokens"], tags = doc["tags"]) for doc in adapter.load(limit)])
         self.dataOnlyID = tuple()
 
@@ -127,9 +152,6 @@ class MemoryCorpus(CacheCorpus):
 
         self.len = len(self.data)
         self.workingList = self.data
-
-    def reset(self):
-        self.position = 0
 
     def onlyID(self, val):
         if val:
@@ -140,17 +162,19 @@ class MemoryCorpus(CacheCorpus):
         else:
             self.workingList = self.data
 
-    def __iter__(self):
-        while self.position < self.len:
-            yield self.workingList[self.position]
+class PairsCorpus(MemoryCorpus):
+    def __init__(self, adapter = None, limit = np.inf, includeOnlyID = True):
+        self.limit = limit
+        self.adapter = adapter
+        self.position = 0
+        self.data = tuple([pair for pair in adapter.load(limit)])
+        self.dataOnlyID = tuple()
 
-            self.position += 1
+        self.len = len(self.data)
+        self.workingList = self.data
 
-        self.reset()
-
-    
-    def __getitem__(self, _indexes):
-        return [self.workingList[i] for i in _indexes]
+    def reset(self):
+        self.position = 0
 
 
 from src.utils.CacheAdapter import createTestSetAdapter_02_04_25_GOOD, createTrainSetAdapter_02_04_25_GOOD, createTrainSetDBadepter_02_04_25_GOOD, createTestSetDBadepter_02_04_25_GOOD

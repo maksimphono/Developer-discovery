@@ -28,6 +28,7 @@ import logging
 
 from src.utils.CacheAdapter import JSONAdapter, CacheAdapter, EXP_END_OF_DATA
 from src.data_processing.collect_projects_data import collectOneProjectData, EXP_NOT_IN_DB
+from src.utils.DatabaseConnect import DatabaseConnector
 
 def downloadArgosLangPackages(langList = ["es", "pt", "zh", "zt", "ru", "de", "ja", "ko"]):
     argostranslate.package.update_package_index()
@@ -554,3 +555,38 @@ class NewDatasetManager(DatasetManager):
         self.mappedData.clear()
         self.processedProjsIds.clear()
 
+
+class RawTextDatasetManager(NewDatasetManager):    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.proj_info = DatabaseConnector("mongodb://readonlyUser:cictest123456@114.212.84.247:27017/", "developer_discovery").collection("proj_info")
+
+    def reset(self, skip):
+        self.inputAdapter.reset()
+        if skip > 0:
+            self.inputAdapter.load(skip)
+
+    def prepareData(self, project):
+        proj_id = project["tags"][0]
+        #print(proj_id)
+        projData = self.proj_info.find_one({"proj_id" : proj_id}, projection = {"name" : True, "description" : True})
+        joinedText = ". ".join([projData["name"], projData["description"]])
+        translated = self.translateText(joinedText)
+
+        return {"text" : translated, "tags" : project["tags"]}
+
+    def preprocess(self, project):
+        while True:
+            try:
+                result = self.prepareData(project)
+                return result
+            except NewDatasetManager.EXP_CONNECTION_LOSS as exp:
+                if self.handleConnectionLoss():
+                    continue # try again
+                else:
+                    self.interruptGracefully(f"Falied to fix error :(\nError occured while scanning {project['tags'][0]}")
+            except Exception as exp:
+                if self.handleException():
+                    continue
+                else:
+                    self.interruptGracefully(f"Falied to fix error :(\nError occured while scanning {project['tags'][0]}")

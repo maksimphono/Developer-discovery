@@ -285,3 +285,20 @@ class Factory_21_04_25_HIGH:
     @classmethod
     def createTestSetAdapter(cls):
         return FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/test_21-04-25")
+
+
+
+class EvaluationAdapterFactory:
+    @classmethod
+    def createProjectsEvaluationGroups(cls):
+        return (
+            FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/related_pairs_idx_21-04-25"),
+            FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/unrelated_pairs_idx_21-04-25")
+        )
+    
+    @classmethod
+    def createUsersEvaluationGroups(cls):
+        return (
+            FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/users_evaluation_group_1_21-04-25"),
+            FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/users_evaluation_group_0_21-04-25")
+        )

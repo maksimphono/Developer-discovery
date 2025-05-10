@@ -1,3 +1,6 @@
+import sys
+sys.path.append('/home/trukhinmaksim/src')
+
 try:
     from consts import *
 except ModuleNotFoundError:
@@ -8,6 +11,9 @@ import json
 from copy import deepcopy
 import re
 from pymongo import MongoClient
+
+from src.utils.DatabaseConnect import DatabaseConnector
+from src.utils.CacheAdapter import EXP_END_OF_DATA
 
 SCANNED_FILES_LIST_PATH = "/home/trukhinmaksim/src/src/data_processing/read_files_list.txt"
 USER_PROFILES_PATH = "/home/trukhinmaksim/src/data/user_profiles"
@@ -57,7 +63,7 @@ class Collection_Files(SmallDatabaseCollection):
     # override
     def save(self):
         with open(os.path.join(OUTPUT_DIRECTORY, f"{self.collectionName}_db_{self.dbCounter}.json"), "w", encoding="utf-8") as file:
-            json.dump(list(self.values()), fp = file, ensure_ascii=False, indent=4, separators = (",", ":"))
+            json.dump(list(self.values()), fp = file, ensure_ascii=False, separators = (",", ":"))
 
         self.dbCounter += 1
 
@@ -227,6 +233,12 @@ def readCSVDatabase(priorityFiles = list(), limit = 2, skipLines = dict()) -> st
                 readFile(root, fileName)
                 count += 1
 
+        # no more files
+        if len(filesNames) > 0:
+            return filesNames
+        else:
+            raise EXP_END_OF_DATA
+
         # don't need to go through subdirectories
     return filesNames
 
@@ -311,7 +323,43 @@ class UsersCollection:
                 print("scanned")
                 ScannedFilesManager.update()
                 break
-        
+
+
+class UsersEvaluationAdapter:
+
+    def __init__(self, priorityCSVfiles = []):
+        self.proj_info = DatabaseConnector("mongodb://readonlyUser:cictest123456@114.212.84.247:27017/", "developer_discovery").collection("proj_info")
+        self.users_db = users_db
+        self.priorityCSVfiles = priorityCSVfiles
+        self.limit = 100
+        self.counter = 0
+
+    def scan(self, amount = 2):
+        filesNames = readCSVDatabase(self.priorityCSVfiles, amount)
+        readJSONDatabase(map(lambda fn: fn.replace(".csv", ".json"), filesNames))
+
+        return users_db
+
+    def load(self, amount = float("inf")):
+        if self.counter >= self.limit:
+            raise EXP_END_OF_DATA
+        self.users_db.clear()
+        self.users_db = self.scan(amount)
+
+        #values = list(self.users_db.values())
+
+        for user_id in self.users_db:
+            user = self.users_db[user_id]
+            ids = tuple(user["projects"].keys())
+            for proj_id in ids:
+                textData = self.proj_info.find_one({"proj_id" : proj_id}, projection = {"name" : True, "description" : True})
+                if textData and textData["name"] and textData["description"]:
+                    user["projects"][proj_id] = ". ".join([textData["name"], textData["description"]])
+                else:
+                    del user["projects"][proj_id]
+
+        self.counter += 1
+        return list(self.users_db.values())
 
 
 def getScannedFiles():
