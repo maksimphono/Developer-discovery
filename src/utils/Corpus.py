@@ -218,12 +218,12 @@ class Factory_21_04_25_HIGH:
     @classmethod
     def createFlatTrainCorpus(cls, limit = np.inf):
         adapter = AdapterFactory_21_04_25.createTrainSetAdapter()
-        return MemoryCorpus(adapter, limit = limit)
+        return Doc2VecCorpus(adapter, limit = limit)
 
     @classmethod
     def createFlatTestCorpus(cls, limit = np.inf):
         adapter = AdapterFactory_21_04_25.createTestSetAdapter()
-        return MemoryCorpus(adapter, limit = limit, includeOnlyID = False)
+        return Doc2VecCorpus(adapter, limit = limit, includeOnlyID = False)
 
     @classmethod
     def createTrainDBCorpus(cls, limit = np.inf):

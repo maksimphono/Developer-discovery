@@ -200,7 +200,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
 
     def __call__(self, document):
         # method, that will be used to get vector representation of the document (in this case TaggedDocument)
-        return self.dv.infer_vector(document.words)
+        return self.infer_vector(document.words)
 
     def evaluate(self): # this method is used be autotuner
         # will train the model on upon-selected set of parameters and test it's performance
@@ -212,9 +212,13 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         #self.trainCorpus = CorpusFactory.createFlatTrainDBCorpus_02_04_25_GOOD() # for testing step I must use database adapter for better documents retreival
         #result = self.test(k = 15)
 
+        start = time()
         if self.evaluator != None:
+            self.testCorpus.reset()
             self.evaluator.setModel(self)
             result = self.evaluator.evaluate()
+
+        self.logger.info(f"\nEvaluation completed in {time() - start} s; Result: {result}")
 
         if Model.bestScore < result:
             Model.bestScore = result
