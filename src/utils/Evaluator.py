@@ -63,10 +63,10 @@ class Evaluator:
             self.memorizedVectors[index] = vec
             return vec
 
-    def evaluate(self, model):
+    def evaluate(self):
         for pairs, similarities in ((self.relatedPairs, self.relatedPairsSimilarities), (self.unrelatedPairs, self.unrelatedPairsSimilarities)):
-            for index1, index2, label in pairs:
-                vec1, vec2 = (self.getVector(index1), self.getVector(index2))
+            for item1, item2, label in pairs:
+                vec1, vec2 = (self.getVector(item1), self.getVector(item2))
                 simScore = self.similarityCheck(vec1, vec2)
                 similarities.append(simScore)
 
@@ -101,11 +101,10 @@ class UsersEvaluator(Evaluator):
             self.memorizedVectors[proj_id] = vector
             return vector
 
-    def evaluate(self, model):
-        for pairs, similarities in ((self.relatedPairs, self.relatedPairsSimilarities), (self.unrelatedPairs, self.unrelatedPairsSimilarities)):
-            for user, project, label in pairs:
-                vec1, vec2 = (self.getUserVector(user), self.getProjectVector(project))
-                simScore = self.similarityCheck(vec1, vec2)
-                similarities.append(simScore)
-
-        return self.statisticalTest(self.relatedPairsSimilarities, self.unrelatedPairsSimilarities)
+    def getVector(self, obj):
+        if "id" in obj:
+            # argument is a user
+            return getUserVector(obj)
+        else:
+            # argument is a project
+            return getProjectVector(obj)
