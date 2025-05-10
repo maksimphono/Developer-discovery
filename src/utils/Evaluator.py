@@ -16,6 +16,8 @@ from src.utils.CacheAdapter import Factory_21_04_25_HIGH as CacheFactory
 class Evaluator:
     def __init__(self, relatedPairsIdxAdapter, unrelatedPairsIdxAdapter, corpus, limit = np.inf):
         self.limit = limit
+        self.relatedPairsIdxAdapter = relatedPairsIdxAdapter
+        self.unrelatedPairsIdxAdapter = unrelatedPairsIdxAdapter
         self.corpus = corpus
         self.memorizedVectors = {}
         self.model = None
@@ -27,11 +29,11 @@ class Evaluator:
     def load(self):
         # load both sets of pairs
         try:
-            self.relatedPairs = relatedPairsIdxAdapter.load(self.limit)
+            self.relatedPairs = self.relatedPairsIdxAdapter.load(self.limit)
         except EXP_END_OF_DATA:
             pass
         try:
-            self.unrelatedPairs = unrelatedPairsIdxAdapter.load(self.limit)
+            self.unrelatedPairs = self.unrelatedPairsIdxAdapter.load(self.limit)
         except EXP_END_OF_DATA:
             pass
 
@@ -59,13 +61,14 @@ class Evaluator:
             return self.memorizedVectors[index]
         else:
             doc = self.corpus[[index]][0]
-            vec = self.model.infer_vector(doc.words)
+            vec = self.model(doc)
             self.memorizedVectors[index] = vec
             return vec
 
     def evaluate(self):
         for pairs, similarities in ((self.relatedPairs, self.relatedPairsSimilarities), (self.unrelatedPairs, self.unrelatedPairsSimilarities)):
-            for item1, item2, label in pairs:
+            for pair in pairs:
+                item1, item2, label = [*pair.values()]
                 vec1, vec2 = (self.getVector(item1), self.getVector(item2))
                 simScore = self.similarityCheck(vec1, vec2)
                 similarities.append(simScore)
@@ -74,11 +77,12 @@ class Evaluator:
 
 
 class UsersEvaluator(Evaluator):
-    def __init__(self, aggregate = np.mean):
+    def __init__(self, aggregate = np.mean, tokenizer = lambda s: s.split()):
         group1, group0 = CacheFactory.createProjectsEvaluationGroups()
         super().__init__(group1, group0, None, limit = 2200)
 
         self.aggregate = aggregate
+        self.tokenizer = tokenizer
 
     def getUserVector(self, user):
         vectors = []
@@ -86,7 +90,8 @@ class UsersEvaluator(Evaluator):
             if proj_id in self.memorizedVectors:
                 vectors.append(self.memorizedVectors[proj_id])
             else:
-                vectors.append(self.model.infer_vector(text))
+                doc = self.tokenizer(text)
+                vectors.append(self.model(doc))
                 self.memorizedVectors[proj_id] = vectors[-1]
         
         return self.aggregate(np.array(vectors))
@@ -96,8 +101,8 @@ class UsersEvaluator(Evaluator):
         if proj_id in self.memorizedVectors:
             return self.memorizedVectors[proj_id]
         else:
-            text = [*project.values()][0]
-            vector = self.model.infer_vector(text)
+            doc = self.tokenizer([*project.values()][0])
+            vector = self.model(doc)
             self.memorizedVectors[proj_id] = vector
             return vector
 
