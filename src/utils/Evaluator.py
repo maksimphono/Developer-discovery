@@ -11,6 +11,7 @@ from copy import deepcopy
 from scipy.stats import mannwhitneyu
 
 from src.utils.CacheAdapter import Factory_21_04_25_HIGH as CacheFactory
+from src.utils.CacheAdapter import EvaluationAdapterFactory
 
 
 class Evaluator:
@@ -113,3 +114,14 @@ class UsersEvaluator(Evaluator):
         else:
             # argument is a project
             return getProjectVector(obj)
+
+
+class Factory:
+    @classmethod
+    def createEvaluator(cls, model, corpus, similarity):
+        relatedAda, unrelatedAda = EvaluationAdapterFactory.createProjectsEvaluationGroups()
+        evaluator = Evaluator(relatedAda, unrelatedAda, corpus)
+        evaluator.setModel(model)
+        evaluator.setSimilarityCheck(similarity)
+
+        return evaluator
