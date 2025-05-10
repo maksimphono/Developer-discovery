@@ -21,7 +21,9 @@ import gensim
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics import precision_score, recall_score, f1_score
 from annoy import AnnoyIndex
-
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
 
 class EXP_CORPUS_IS_NONE(Exception):
     def __init__(self):
@@ -84,8 +86,38 @@ class Model(gensim.models.doc2vec.Doc2Vec):
 
         return logging.getLogger("gensim.models.doc2vec")
 
+    @classmethod
+    def createDocument(cls, doc):
+        # will create TaggedDocument from raw text data to be consumed by model for training or testing process
+
+        text = doc["text"]
+        lemmatizer = WordNetLemmatizer()
+
+        text = text.encode("ascii", "ignore").decode()
+        # Process camel case:
+        #text = processCamelCase(text)
+        # Lower the text:
+        text = text.lower()
+        # remove links and urls:
+        text = re.sub(r"http[^\s]*", "", text)
+        # Remove punctuation:
+        text = text.translate(str.maketrans(string.punctuation, " " * len(string.punctuation)))
+        # Remove stop-words:
+        #text = re.sub("\s" + "|".join(stop_words) + "\s", " ", text)
+        # Remove numbers:
+        text = re.sub(r"\d", "", text)
+        # Remove new lines:
+        text = re.sub(r"\n", " ", text)
+        # Remove multiple spaces:
+        text = re.sub("\s+", " ", text).strip()
+
+        tokens = [word for word in word_tokenize(text) if word not in stop_words and len(word) > 1]  # Tokenize into words
+
+        tokens = [lemmatizer.lemmatize(word) for word in tokens]  # Remove stopwords & lemmatize
+
+        return TaggedDocument(words = tokens, tags = doc["tags"])
     
-    def __init__(self, dm_dbow_mode = "DM", pretrain_w2v = False, alpha_init = 0.05, alpha_final = 0.001, *args, **kwargs):
+    def __init__(self, dm_dbow_mode = "DM", pretrain_w2v = False, alpha_init = 0.05, alpha_final = 0.001, evaluator = None, *args, **kwargs):
         super().__init__(dm = (1 if dm_dbow_mode == "DM" else 0), *args, **kwargs)
         self.trainCorpus = None # corpus is an iterator(iterable class object), that will be used in "train" method of Doc2Vec model for data extraction
         self.testCorpus = None # corpuses should be static structures, that are not changing in process of evaluation
@@ -95,6 +127,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         self.pretrainW2V = pretrain_w2v
         self.logger = logging.getLogger("gensim.models.doc2vec")
         self.normalizedVectors = []
+        self.evaluator = evaluator
     
     def train(self):
         # will build vocabulary and train the model on trainset (trainset will be fed by corpus)
@@ -199,6 +232,10 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         else:
             return result
 
+    def __call__(self, document):
+        # method, that will be used to get vector representation of the document (in this case TaggedDocument)
+        return self.infer_vector(document.words)
+
     def evaluate(self): # this method is used be autotuner
         # will train the model on upon-selected set of parameters and test it's performance
         self.train()
@@ -207,7 +244,11 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         #result = self.assess(5000, silent = True, format = "mean", random_state = 42)
 
         #self.trainCorpus = CorpusFactory.createFlatTrainDBCorpus_02_04_25_GOOD() # for testing step I must use database adapter for better documents retreival
-        result = self.test(k = 15)
+        #result = self.test(k = 15)
+
+        if self.evaluator != None:
+            self.evaluator.setModel(self)
+            result = self.evaluator.evaluate()
 
         if Model.bestScore < result:
             Model.bestScore = result

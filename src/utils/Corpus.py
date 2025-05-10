@@ -115,7 +115,7 @@ class FlatCorpus(Corpus):
         return [TaggedDocument(words = doc["tokens"], tags = doc["tags"]) for doc in self.adapter[_indexes]]
 
 class MemoryCorpus(CacheCorpus):
-    def __init__(self, adapter = None, limit = np.inf, includeOnlyID = True):
+    def __init__(self, adapter = None, limit = np.inf, includeOnlyID = True, createDocument = lambda s: None):
         self.limit = limit
         self.adapter = adapter
         self.position = 0
