@@ -255,3 +255,14 @@ class Factory_21_04_25_HIGH:
     def createTrainDBCorpus(cls, limit = np.inf):
         adapter = AdapterFactory_21_04_25.createTrainSetDBadepter()
         return FlatCorpus(adapter, limit = limit)
+
+    class BERT:
+        @classmethod
+        def createTrainCorpus(cls, limit = np.inf):
+            adapter = AdapterFactory_21_04_25.createTrainSetAdapter()
+            return SBertCorpus(adapter, limit = limit, max_len = 128)
+
+        @classmethod
+        def createTestCorpus(cls, limit = np.inf):
+            adapter = AdapterFactory_21_04_25.createTestSetAdapter()
+            return SBertCorpus(adapter, limit = limit, max_len = 128)

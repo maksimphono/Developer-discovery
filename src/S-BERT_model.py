@@ -10,87 +10,77 @@ import torch.nn.functional as F
 
 from torch.optim import AdamW
 
+#train_pairs, val_pairs, train_labels, val_labels = train_test_split(pairs, labels, test_size=0.2, random_state=42)
 
-# Example data (replace with your actual data)
-data = {
-    'document': [
-        "Troubleshooting network connectivity issues.",
-        "Guide to setting up a VPN connection.",
-        "Introduction to Python programming.",
-        "Advanced data structures in C++.",
-        "Network security best practices.",
-        "Python for data analysis.",
-        "C++ memory management techniques.",
-        "Securing your home network.",
-    ],
-    'topics': [
-        ["networking", "troubleshooting"],
-        ["networking", "vpn"],
-        ["programming", "python"],
-        ["programming", "cpp", "datastructures"],
-        ["networking", "security"],
-        ["programming", "python", "data analysis"],
-        ["programming", "cpp", "memory management"],
-        ["networking", "security", "home"],
-    ]
-}
-df = pd.DataFrame(data)
+def areRelevant(doc1, doc2):
+    return len(set(doc1["tags"]) & set(doc2["tags"])) >= 1
 
-def is_similar(topics1, topics2, threshold=2):
-    return len(set(topics1) & set(topics2)) >= threshold
+def createPairsFromBatch(batch):
+    pairsBatch = {
+        "input_ids_1" : [],
+        "input_ids_2" : [],
+        "attention_mask_1" : [],
+        "attention_mask_2" : [],
+        "labels" : []
+    }
+    for i in range(len(batch)):
+        for j in range(i + 1, len(batch)):
+            doc1 = batch[i]
+            doc2 = batch[j]
+            pairsBatch["input_ids_1"].append(doc1['input_ids'].squeeze())
+            pairsBatch["input_ids_2"].append(doc2['input_ids'].squeeze())
+            pairsBatch["attention_mask_1"].append(doc1['attention_mask'].squeeze())
+            pairsBatch["attention_mask_2"].append(doc2['attention_mask'].squeeze())
 
-pairs = []
-labels = []
-for i in range(len(df)):
-    for j in range(i + 1, len(df)):
-        doc1 = df['document'][i]
-        doc2 = df['document'][j]
-        topics1 = df['topics'][i]
-        topics2 = df['topics'][j]
-        similarity = is_similar(topics1, topics2)
-        pairs.append((doc1, doc2))
-        labels.append(1 if similarity else 0)
+            if areRelevant(doc1, doc2):
+                pairsBatch["labels"].append(torch.tensor(1, dtype=torch.float))
+            else:
+                pairsBatch["labels"].append(torch.tensor(0, dtype=torch.float))
 
-train_pairs, val_pairs, train_labels, val_labels = train_test_split(pairs, labels, test_size=0.2, random_state=42)
+    pairsBatch["input_ids_1"] = tensor(pairsBatch["input_ids_1"])
+    pairsBatch["input_ids_2"] = tensor(pairsBatch["input_ids_2"])
+    pairsBatch["attention_mask_1"] = tensor(pairsBatch["attention_mask_1"])
+    pairsBatch["attention_mask_2"] = tensor(pairsBatch["attention_mask_2"])
+    pairsBatch["labels"] = tensor(pairsBatch["labels"])
 
-tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    return pairsBatch
 
-class SimilarityDataset(Dataset):
-    def __init__(self, pairs, labels, tokenizer, max_len=128):
-        self.pairs = pairs
-        self.labels = labels
-        self.tokenizer = tokenizer
-        self.max_len = max_len
-
-    def __len__(self):
-        return len(self.labels)
-
-    def __getitem__(self, idx):
-        doc1, doc2 = self.pairs[idx]
-        label = self.labels[idx]
-        encoding1 = self.tokenizer(doc1, return_tensors='pt', truncation=True, padding='max_length', max_length=self.max_len)
-        encoding2 = self.tokenizer(doc2, return_tensors='pt', truncation=True, padding='max_length', max_length=self.max_len)
-        return {
-            'input_ids_1': encoding1['input_ids'].squeeze(),
-            'attention_mask_1': encoding1['attention_mask'].squeeze(),
-            'input_ids_2': encoding2['input_ids'].squeeze(),
-            'attention_mask_2': encoding2['attention_mask'].squeeze(),
-            'labels': torch.tensor(label, dtype=torch.float)
-        }
-
-train_dataset = SimilarityDataset(train_pairs, train_labels, tokenizer)
+trainCorpus = SimilarityDataset(train_pairs, train_labels, tokenizer)
 val_dataset = SimilarityDataset(val_pairs, val_labels, tokenizer)
 train_dataloader = DataLoader(train_dataset, batch_size=16, shuffle=True)
 val_dataloader = DataLoader(val_dataset, batch_size=16)
 
-
+DEFAULT_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class SiameseBert(BertPreTrainedModel):
-    def __init__(self, config):
+    def __init__(self, config, epochs = 5, batchSize = 16, optimizer = None, device = DEFAULT_DEVICE, evaluator = None):
         super(SiameseBert, self).__init__(config)
+        self.trainCorpus = None
+        self.testCorpus = None
+        self.logger = None
+        self.batchSize = batchSize
+        self.epochs = epochs
+        self.evaluator = evaluator
+        self.trainDataLoader = None
+        self.testDataLoader = None
+        self.device = device
+        self.criterion = nn.BCEWithLogitsLoss() # most suitable criterion for Siamise BERT
+        if optimizer == None:
+            self.optimizer = AdamW(self.parameters(), lr=1e-5)
+        else:
+            self.optimizer = optimizer
+
         self.bert = BertModel(config)
         self.fc = nn.Linear(config.hidden_size, 1)
         self.init_weights()
+
+    def setTrainCorpus(self, corpus):
+        self.trainCorpus = corpus
+        self.trainDataLoader = DataLoader(self.trainCorpus, batch_size=self.batchSize, shuffle=True)
+
+    def setTestCorpus(self, corpus):
+        self.testCorpus = corpus
+        self.testDataLoader = DataLoader(self.testCorpus, batch_size=self.batchSize)
 
     def forward(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
         output1 = self.bert(input_ids=input_ids_1, attention_mask=attention_mask_1)
@@ -105,15 +95,90 @@ class SiameseBert(BertPreTrainedModel):
         prediction = self.fc(similarity.unsqueeze(1))
         return prediction
 
-model = SiameseBert.from_pretrained('bert-base-uncased')
+    def unpackBatch(self, batch):
+        pairs = createPairsFromBatch(rawBatch)
+        return (
+            pairs['input_ids_1'].to(self.device)
+            pairs['attention_mask_1'].to(self.device)
+            pairs['input_ids_2'].to(self.device)
+            pairs['attention_mask_2'].to(self.device)
+            pairs['labels'].to(self.device).unsqueeze(1)
+        )
 
+    def trainEpoch(self):
+        self.to(self.device)
+        self.train()
+        total_loss = 0
+
+        for batch in self.trainDataLoader:
+            pairs = createPairsFromBatch(batch)
+            input_ids_1 = pairs['input_ids_1'].to(self.device)
+            attention_mask_1 = pairs['attention_mask_1'].to(self.device)
+            input_ids_2 = pairs['input_ids_2'].to(self.device)
+            attention_mask_2 = pairs['attention_mask_2'].to(self.device)
+            labels = pairs['labels'].to(self.device).unsqueeze(1)
+
+            self.optimizer.zero_grad()
+            outputs = super().__call__(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
+            loss = self.criterion(outputs, labels)
+            loss.backward()
+            self.optimizer.step()
+            total_loss += loss.item()
+
+        return total_loss / len(self.trainDataLoader)
+
+    def evalEpoch(self):
+        self.eval()
+        total_loss = 0
+        correct_predictions = 0
+
+        with torch.no_grad():
+            for batch in self.testDataLoader:
+                pairs = createPairsFromBatch(batch)
+                input_ids_1 = pairs['input_ids_1'].to(self.device)
+                attention_mask_1 = pairs['attention_mask_1'].to(self.device)
+                input_ids_2 = pairs['input_ids_2'].to(self.device)
+                attention_mask_2 = pairs['attention_mask_2'].to(self.device)
+                labels = pairs['labels'].to(self.device).unsqueeze(1)
+
+                outputs = super().__call__(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
+                loss = self.criterion(outputs, labels)
+                total_loss += loss.item()
+                predictions = torch.sigmoid(outputs) > 0.5
+                correct_predictions += (predictions == labels).sum().item()
+
+        avg_loss = total_loss / len(self.testDataLoader)
+        accuracy = correct_predictions / len(self.testCorpus)
+
+        return avg_loss, accuracy
+
+    def train(self):
+        for epoch in range(self.epochs):
+            trainLoss = trainEpoch()
+            evalLoss, evalAccuracy = evalEpoch()
+
+            print(f"Epoch {epoch + 1}/{self.epochs}, Train Loss: {trainLoss:.4f}, Val Loss: {evalLoss:.4f}, Val Accuracy: {evalAccuracy:.4f}")
+
+    def __call__(self, document):
+        model.eval()
+
+        with torch.no_grad():
+            outputs = model.bert(**document).pooler_output
+        return outputs.cpu().numpy()
+        #return super().__call__(*args, **kwargs)
+
+    def evaluate(self):
+        pass
+
+
+model = SiameseBert.from_pretrained('bert-base-uncased')
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 optimizer = AdamW(model.parameters(), lr=1e-5)
 criterion = nn.BCEWithLogitsLoss()
 
-def train_epoch(model, dataloader, optimizer, criterion, device):
+def trainEpoch(model, dataloader, optimizer, criterion, device):
     model.train()
     total_loss = 0
     for batch in dataloader:
@@ -131,7 +196,7 @@ def train_epoch(model, dataloader, optimizer, criterion, device):
         total_loss += loss.item()
     return total_loss / len(dataloader)
 
-def evaluate_epoch(model, dataloader, criterion, device):
+def evalEpoch(model, dataloader, criterion, device):
     model.eval()
     total_loss = 0
     correct_predictions = 0
@@ -154,8 +219,8 @@ def evaluate_epoch(model, dataloader, criterion, device):
 
 num_epochs = 5
 for epoch in range(num_epochs):
-    train_loss = train_epoch(model, train_dataloader, optimizer, criterion, device)
-    val_loss, val_accuracy = evaluate_epoch(model, val_dataloader, criterion, device)
+    train_loss = trainEpoch(model, train_dataloader, optimizer, criterion, device)
+    val_loss, val_accuracy = evalEpoch(model, val_dataloader, criterion, device)
     print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}")
 
 # To get document embeddings after training:
