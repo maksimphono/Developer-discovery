@@ -22,9 +22,10 @@ class Evaluator:
         self.corpus = corpus
         self.memorizedVectors = {}
         self.model = None
-        self.similarityCheck = lambda v1, v2: 1
+        self.similarityCheck = lambda v1, v2: 0
         self.relatedPairsSimilarities = []
         self.unrelatedPairsSimilarities = []
+        self.logger = None
         self.load()
 
     def load(self):
@@ -38,9 +39,11 @@ class Evaluator:
         except EXP_END_OF_DATA:
             pass
 
-    def unload(self):
-        self.relatedPairs.clear()
-        self.unrelatedPairs.clear()
+        print(f"Got {len(self.relatedPairs)} related pairs")
+        print(f"Got {len(self.unrelatedPairs)} unrelated pairs")
+        if self.logger != None:
+            self.logger.info(f"Got {len(self.relatedPairs)} related pairs")
+            self.logger.info(f"Got {len(self.unrelatedPairs)} unrelated pairs")
 
     def setModel(self, model):
         # set new model and clear everything, that was produced by the old model
@@ -53,9 +56,13 @@ class Evaluator:
         self.similarityCheck = fn
 
     def statisticalTest(self, group1, group0):
-        u_statistic, p_value = mannwhitneyu(group1, group0, alternative = "less")
+        print(f"Using Mann-W test on group1 = {group1[:10]}... group0 = {group0[:10]}...")
+        if self.logger != None: self.logger.info(f"Using Mann-W test on group1 = {group1[:10]}... group0 = {group0[:10]}...")
+        u_statistic, p_value = mannwhitneyu(group1, group0, alternative = "less") # , alternative = "less"
 
-        return p_value
+        if p_value < 1e-150:
+            p_value = 1
+        return -p_value
 
     def getVector(self, index):
         if index in self.memorizedVectors:
@@ -67,6 +74,8 @@ class Evaluator:
             return vec
 
     def evaluate(self):
+        print(f"Called Evaluate.evaluate() method, model = {repr(self.model)} relatedPairs = {self.relatedPairs[:3]}...")
+        if self.logger != None: self.logger.info(f"Called Evaluate.evaluate() method, model = {repr(self.model)} relatedPairs = {self.relatedPairs[:3]}...")
         for pairs, similarities in ((self.relatedPairs, self.relatedPairsSimilarities), (self.unrelatedPairs, self.unrelatedPairsSimilarities)):
             for pair in pairs:
                 item1, item2, label = [*pair.values()]

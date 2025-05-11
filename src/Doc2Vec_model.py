@@ -94,6 +94,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         self.logger = logging.getLogger("gensim.models.doc2vec")
         self.normalizedVectors = []
         self.evaluator = evaluator
+        self.logger.info(f"\nDoc2Vec model created with {kwargs}\n")
     
     def train(self):
         # will build vocabulary and train the model on trainset (trainset will be fed by corpus)
@@ -216,6 +217,8 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         if self.evaluator != None:
             self.testCorpus.reset()
             self.evaluator.setModel(self)
+            self.evaluator.logger = self.logger
+            self.logger.info(f"\nReady to evaluate model, evaluator = {repr(self.evaluator)}")
             result = self.evaluator.evaluate()
 
         self.logger.info(f"\nEvaluation completed in {time() - start} s; Result: {result}")

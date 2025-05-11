@@ -21,11 +21,12 @@ from src.utils.helpers import cosineSimilarity as similarity
 from skopt.space import Real, Integer
 from src.utils.AutoTuner import AutoTuner, Param
 from src.Doc2Vec_model import Model
+from gensim.models import Doc2Vec
 
 MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/09-05-25_Doc2Vec.model"
-RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/09-05-25_evaluatuin.result"
-TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/09-05-25_autotunning.log"
-TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/09-05-25_training.log"
+RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/10-05-25_evaluatuin.result"
+TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/10-05-25_autotunning.log"
+TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/10-05-25_training.log"
 
 # creating model
 
@@ -35,7 +36,6 @@ ALPHA_FINAL = 0.00001
 trainCorpus = None
 testCorpus = None
 evaluator = None
-
 
 def createModel(**kwargs):
     global trainCorpus, testCorpus, evaluator
@@ -76,28 +76,24 @@ def saveModel(model):
 
 def main():
     start = time()
-    parameters = [
-        Param(_name = "vector_size", _type = Integer,  _range = (150, 230),   _initial = 230), # 175 230, 'window': 5, 'min_count': 15, 'epochs': 55, 'negative': 20, 'sample': 1e-05
-        Param(_name = "window",      _type = Integer,  _range = (5, 15),      _initial = 5),
-        Param(_name = "min_count",   _type = Integer,  _range = (7, 15),      _initial = 15),
-        Param(_name = "epochs",      _type = Integer,  _range = (35, 55),     _initial = 55), # 40
-        Param(_name = "negative",    _type = Integer,  _range = (5, 20),      _initial = 20), # 18
-        Param(_name = "sample",      _type = Real,     _range = (1e-5, 1e-3), _initial = 1e-05),
-    ]
 
-    tuner = AutoTuner(createModel, parameters)
+    model = createModel(
+        vector_size = 230,
+        window = 5,
+        min_count = 15,
+        epochs = 55,
+        negative = 20,
+        sample = 1e-05,
+    )
 
     try:
         # danger zone! Progress must be saved if error occure
-        tuner.logger.info("Welcome!")
-        tuner.logger.info(f"\nAutotuner object created successfully with parameters: {[p.name for p in parameters]}\n")
-        tuner.logger.info("Starting process of autotunning...\n")
-    
-        results = tuner.tune(26)
+        print("Welcome!")
+        results = model.evaluate() # {'vector_size': 230, 'window': 5, 'min_count': 15, 'epochs': 55, 'negative': 20, 'sample': 1e-05}
 
         end = time()
-        tuner.logger.info(f"\n\nProcess completed in {(end - start) / 60} min\n")
-        tuner.logger.info(f"Found best evaluation value {results.fun} with parameters: {results.x}\n")
+        print(f"\n\nProcess completed in {(end - start) / 60} min\n")
+        print(f"Found best evaluation value {results}\n")
 
         with open(RESULTS_RECORD_PATH, "w") as file:
             print(results, file = file)
@@ -109,7 +105,8 @@ def main():
         exit(1)
 
     finally:
-        saveModel(tuner.model) # saving model upon completion or in case of error
+        #saveModel(tuner.model) # saving model upon completion or in case of error
+        pass
 
 def completeProcess(*args):
     # perform custom action upon completion
