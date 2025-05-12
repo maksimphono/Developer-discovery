@@ -170,7 +170,7 @@ class SBertCorpus(MemoryCorpus):
     @classmethod
     def createTaggedDocument(cls, words : str, tags : list, *args, **kwargs):
         encoding = cls.tokenizer(words, *args, **kwargs)
-        encoding["tags"] = list(tags)
+        encoding["tags"] = list(tags) + [0] * (8 - len(tags))
 
         return encoding
 
@@ -180,11 +180,12 @@ class SBertCorpus(MemoryCorpus):
         self.data = tuple([SBertCorpus.createTaggedDocument(words = doc["text"], tags = doc["tags"], truncation=True, padding='max_length', max_length=self.max_len) for doc in adapter.load(limit)]) # return_tensors='pt'
         self.len = len(self.data)
         self.workingList = self.data
+        print("Corpus created sucessfuly")
 
     def __len__(self):
         return len(self.workingList)
 
-    def __getitem___(self, index):
+    def __getitem__(self, index):
         return self.workingList[index]
 
 
@@ -259,10 +260,10 @@ class Factory_21_04_25_HIGH:
     class BERT:
         @classmethod
         def createTrainCorpus(cls, limit = np.inf):
-            adapter = AdapterFactory_21_04_25.createTrainSetAdapter()
-            return SBertCorpus(adapter, limit = limit, max_len = 128)
+            adapter = AdapterFactory_21_04_25.createTextTrainAdapter()
+            return SBertCorpus(adapter, limit = limit, max_len = 8)
 
         @classmethod
         def createTestCorpus(cls, limit = np.inf):
-            adapter = AdapterFactory_21_04_25.createTestSetAdapter()
-            return SBertCorpus(adapter, limit = limit, max_len = 128)
+            adapter = AdapterFactory_21_04_25.createTextTestAdapter()
+            return SBertCorpus(adapter, limit = limit, max_len = 8)

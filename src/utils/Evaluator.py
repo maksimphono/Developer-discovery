@@ -68,7 +68,7 @@ class Evaluator:
         if index in self.memorizedVectors:
             return self.memorizedVectors[index]
         else:
-            doc = self.corpus[[index]][0]
+            doc = self.corpus[index]
             vec = self.model(doc)
             self.memorizedVectors[index] = vec
             return vec
