@@ -18,12 +18,12 @@ from src.utils.Corpus import CacheCorpus, Factory_21_04_25_HIGH as CorpusFactory
 
 from skopt.space import Real, Integer
 from src.utils.AutoTuner import AutoTuner, Param
-from src.S-BERT_model import SiameseBert as Model
+from src.SBERT_model import SiameseBert as Model
 
-MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/12-04-25_BERT.model"
-RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/12-04-25_evaluatuin.result"
-TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/12-04-25_autotunning.log"
-TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/12-04-25_training.log"
+MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/12-05-25_BERT.model"
+RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/12-05-25_evaluatuin.result"
+TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/12-05-25_autotunning.log"
+TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/12-05-25_training.log"
 
 # creating model
 
@@ -36,16 +36,16 @@ testCorpus = None
 def createModel(**kwargs):
     global trainCorpus, testCorpus
     model = Model.create(
-        epochs = 8,
-        batchSize = 16,
+        epochs = 2,
+        batchSize = 8,
         **kwargs
     )
 
     if trainCorpus == None:
         #trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD(50)
-        trainCorpus = CorpusFactory.createFlatTrainCorpus()
+        trainCorpus = CorpusFactory.BERT.createTrainCorpus(16)
     if testCorpus == None:
-        testCorpus = CorpusFactory.createFlatTestCorpus()
+        testCorpus = CorpusFactory.BERT.createTestCorpus(16)
 
     trainCorpus.reset()
     testCorpus.reset()
@@ -79,23 +79,24 @@ def main():
 
     try:
         # danger zone! Progress must be saved if error occure
-        tuner.logger.info("Welcome!")
-        tuner.logger.info(f"\nAutotuner object created successfully with parameters: {[p.name for p in parameters]}\n")
-        tuner.logger.info("Starting process of autotunning...\n")
+        model.logger.info("Welcome!")
+        model.logger.info(f"\nAutotuner object created successfully with parameters: {[p.name for p in parameters]}\n")
+        model.logger.info("Starting process of autotunning...\n")
     
-        results = model.evaluate()
+        results = model.trainMe()
 
         end = time()
-        tuner.logger.info(f"\n\nProcess completed in {(end - start) / 60} min\n")
-        tuner.logger.info(f"Found best evaluation value {results.fun} with parameters: {results.x}\n")
+        model.logger.info(f"\n\nProcess completed in {(end - start) / 60} min\n")
+        model.logger.info(f"Found best evaluation value {results}\n")
 
         with open(RESULTS_RECORD_PATH, "w") as file:
             print(results, file = file)
     
     except Exception as exp:
-        tuner.logger.error(f"Error occured, last best performance score was {Model.bestScore} with parameters {Model.bestParameters}\n")
-        tuner.logger.error(str(exp))
+        #model.logger.error(f"Error occured, last best performance score was {Model.bestScore} with parameters {Model.bestParameters}\n")
+        model.logger.error(str(exp))
         print("Error occured")
+        raise exp
         exit(1)
 
     finally:
@@ -104,7 +105,7 @@ def main():
 
 if __name__ == "__main__":    
     AutoTuner.configLogger(TUNER_LOG_PATH)
-    Model.configLogger(TRAINING_LOG_PATH)
+    #Model.configLogger(TRAINING_LOG_PATH)
 
     main()
     exit(0)
