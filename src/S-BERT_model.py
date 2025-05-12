@@ -210,9 +210,11 @@ class SiameseBert(BertPreTrainedModel):
             print(f"Epoch {epoch + 1}/{self.epochs}, Train Loss: {trainLoss:.4f}, Val Loss: {evalLoss:.4f}, Val Accuracy: {evalAccuracy:.4f}")
 
         self.logger.info(f"\nTraining is completed in {time() - start}")
+        print(f"\nTraining is completed in {time() - start}")
 
     def __call__(self, document):
         model.eval()
+        print(f"model is called with {document['input_ids']}")
         #encoding = tokenizer(text, return_tensors='pt', truncation=True, padding='max_length', max_length=128)  # Or your desired max_length
         input_ids = tensor(document['input_ids']).unsqueeze(0).to(self.device)
         attention_mask = tensor(document['attention_mask']).unsqueeze(0).to(self.device)
@@ -234,6 +236,7 @@ class SiameseBert(BertPreTrainedModel):
             result = self.evaluator.evaluate()
 
         self.logger.info(f"\nEvaluation is completed in {time() - start}; Result = {result}\n")
+        print(f"\nEvaluation is completed in {time() - start}; Result = {result}\n")
 
         return result
 

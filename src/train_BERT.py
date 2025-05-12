@@ -18,12 +18,12 @@ from src.utils.Corpus import CacheCorpus, Factory_21_04_25_HIGH as CorpusFactory
 
 from skopt.space import Real, Integer
 from src.utils.AutoTuner import AutoTuner, Param
-from src.S-BERT_model import Model
+from src.S-BERT_model import SiameseBert as Model
 
 MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/12-04-25_BERT.model"
-RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/27-04-25_evaluatuin.result"
-TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/27-04-25_autotunning.log"
-TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/27-04-25_training.log"
+RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/12-04-25_evaluatuin.result"
+TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/12-04-25_autotunning.log"
+TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/12-04-25_training.log"
 
 # creating model
 
@@ -36,7 +36,7 @@ testCorpus = None
 def createModel(**kwargs):
     global trainCorpus, testCorpus
     model = Model.create(
-        eposchs = 6,
+        epochs = 8,
         batchSize = 16,
         **kwargs
     )
@@ -49,8 +49,8 @@ def createModel(**kwargs):
 
     trainCorpus.reset()
     testCorpus.reset()
-    model.trainCorpus = trainCorpus
-    model.testCorpus = testCorpus
+    model.setTrainCorpus(trainCorpus)
+    model.setTestCorpus(testCorpus)
 
     return model
 
@@ -74,7 +74,8 @@ def main():
         Param(_name = "sample",      _type = Real,     _range = (1e-5, 1e-3), _initial = 0.0009151125514672825),
     ]
 
-    tuner = AutoTuner(createModel, parameters)
+    #tuner = AutoTuner(createModel, parameters)
+    model = createModel()
 
     try:
         # danger zone! Progress must be saved if error occure
@@ -82,7 +83,7 @@ def main():
         tuner.logger.info(f"\nAutotuner object created successfully with parameters: {[p.name for p in parameters]}\n")
         tuner.logger.info("Starting process of autotunning...\n")
     
-        results = tuner.tune(2)
+        results = model.evaluate()
 
         end = time()
         tuner.logger.info(f"\n\nProcess completed in {(end - start) / 60} min\n")
@@ -98,7 +99,8 @@ def main():
         exit(1)
 
     finally:
-        saveModel(tuner.model) # saving model upon completion or in case of error
+        #saveModel(tuner.model) # saving model upon completion or in case of error
+        pass
 
 if __name__ == "__main__":    
     AutoTuner.configLogger(TUNER_LOG_PATH)
