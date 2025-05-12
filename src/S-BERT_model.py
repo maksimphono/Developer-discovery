@@ -76,14 +76,27 @@ class SiameseBert(BertPreTrainedModel):
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
-    
-    def __init__(self, config, epochs = 5, batchSize = 16, optimizer = None, device = DEFAULT_DEVICE, evaluator = None):
+    @classmethod
+    def create(cls, epochs = 5, batchSize = 16, optimizer = None, device = DEFAULT_DEVICE, evaluator = None):
+        model = cls.from_pretrained('bert-base-uncased')
+        model.prepare(epoch, batchSize, optimizer, device, evaluator)
+
+        return model
+
+    def __init__(self, config):
         super(SiameseBert, self).__init__(config)
         self.trainCorpus = None
         self.testCorpus = None
         self.trainDataLoader = None
         self.testDataLoader = None
         self.logger = logging.getLogger(__name__ + '.SiameseBert')
+        self.bert = BertModel(config)
+        self.fc = nn.Linear(config.hidden_size, 1)
+        self.init_weights()
+
+        print("Bert initialized")
+
+    def prepare(self, epochs = 5, batchSize = 16, optimizer = None, device = DEFAULT_DEVICE, evaluator = None):
         self.batchSize = batchSize
         self.epochs = epochs
         self.evaluator = evaluator
@@ -94,10 +107,7 @@ class SiameseBert(BertPreTrainedModel):
         else:
             self.optimizer = optimizer
 
-        self.bert = BertModel(config)
-        self.fc = nn.Linear(config.hidden_size, 1)
-        self.init_weights()
-        print("Bert initialized")
+        print("Bert prepared")
 
     def setTrainCorpus(self, corpus):
         self.trainCorpus = corpus
@@ -191,8 +201,8 @@ class SiameseBert(BertPreTrainedModel):
     def train(self):
         start = time()
         for epoch in range(self.epochs):
-            trainLoss = trainEpoch()
-            evalLoss, evalAccuracy = evalEpoch()
+            trainLoss = self.trainEpoch()
+            evalLoss, evalAccuracy = self.evalEpoch()
 
             self.logger.info(f"Epoch {epoch + 1}/{self.epochs}, Train Loss: {trainLoss:.4f}, Val Loss: {evalLoss:.4f}, Val Accuracy: {evalAccuracy:.4f}")
             print(f"Epoch {epoch + 1}/{self.epochs}, Train Loss: {trainLoss:.4f}, Val Loss: {evalLoss:.4f}, Val Accuracy: {evalAccuracy:.4f}")
@@ -201,10 +211,14 @@ class SiameseBert(BertPreTrainedModel):
 
     def __call__(self, document):
         model.eval()
+        #encoding = tokenizer(text, return_tensors='pt', truncation=True, padding='max_length', max_length=128)  # Or your desired max_length
+        input_ids = tensor(document['input_ids']).unsqueeze(0).to(self.device)
+        attention_mask = tensor(document['attention_mask']).unsqueeze(0).to(self.device)
 
-        with torch.no_grad():
-            outputs = model.bert(**document).pooler_output
-        return outputs.cpu().numpy()
+        # We only need to pass the input through the bert part of the model.
+        with torch.no_grad():  # Ensure no gradients are calculated during inference
+            output = self.bert(input_ids=input_ids, attention_mask=attention_mask).pooler_output
+        return output
         #return super().__call__(*args, **kwargs)
 
     def evaluate(self):
