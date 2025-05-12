@@ -23,8 +23,6 @@ import torch.nn.functional as F
 
 from torch.optim import AdamW
 
-#train_pairs, val_pairs, train_labels, val_labels = train_test_split(pairs, labels, test_size=0.2, random_state=42)
-
 def areRelevant(doc1, doc2):
     return len(set(doc1["tags"]) & set(doc2["tags"])) >= 1
 
@@ -59,17 +57,12 @@ def createPairsFromBatch(batch):
 
     return pairsBatch
 
-trainCorpus = SimilarityDataset(train_pairs, train_labels, tokenizer)
-val_dataset = SimilarityDataset(val_pairs, val_labels, tokenizer)
-train_dataloader = DataLoader(train_dataset, batch_size=16, shuffle=True)
-val_dataloader = DataLoader(val_dataset, batch_size=16)
-
 DEFAULT_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class SiameseBert(BertPreTrainedModel):
     @classmethod
     def configLogger(cls, path):
-        logger = logging.getLogger(__name__ + '.SiameseBert')  # Unique name
+        logger = logging.getLogger(__name__ + '.SiameseBert')
         logger.setLevel(logging.INFO)
         handler = logging.FileHandler(path)
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -84,7 +77,7 @@ class SiameseBert(BertPreTrainedModel):
         return model
 
     @classmethod
-    def load(cls, path, device):
+    def load(cls, path, device = DEFAULT_DEVICE):
         model = SiameseBert('bert-base-uncased')  # Create a new instance of the model
         model.load_state_dict(torch.load(path)) # Load the saved state dictionary
         model.to(device) # Move to the device
@@ -224,11 +217,9 @@ class SiameseBert(BertPreTrainedModel):
         input_ids = tensor(document['input_ids']).unsqueeze(0).to(self.device)
         attention_mask = tensor(document['attention_mask']).unsqueeze(0).to(self.device)
 
-        # We only need to pass the input through the bert part of the model.
         with torch.no_grad():  # Ensure no gradients are calculated during inference
             output = self.bert(input_ids=input_ids, attention_mask=attention_mask).pooler_output
         return output
-        #return super().__call__(*args, **kwargs)
 
     def evaluate(self):
         start = 0
@@ -249,68 +240,3 @@ class SiameseBert(BertPreTrainedModel):
     def save(self, path):
         torch.save(self.state_dict(), path)
         self.logger(f"Model saved to {path}")
-
-
-model = SiameseBert.from_pretrained('bert-base-uncased')
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model.to(device)
-optimizer = AdamW(model.parameters(), lr=1e-5)
-criterion = nn.BCEWithLogitsLoss()
-
-def trainEpoch(model, dataloader, optimizer, criterion, device):
-    model.train()
-    total_loss = 0
-    for batch in dataloader:
-        input_ids_1 = batch['input_ids_1'].to(device)
-        attention_mask_1 = batch['attention_mask_1'].to(device)
-        input_ids_2 = batch['input_ids_2'].to(device)
-        attention_mask_2 = batch['attention_mask_2'].to(device)
-        labels = batch['labels'].to(device).unsqueeze(1)
-
-        optimizer.zero_grad()
-        outputs = model(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
-        loss = criterion(outputs, labels)
-        loss.backward()
-        optimizer.step()
-        total_loss += loss.item()
-    return total_loss / len(dataloader)
-
-def evalEpoch(model, dataloader, criterion, device):
-    model.eval()
-    total_loss = 0
-    correct_predictions = 0
-    with torch.no_grad():
-        for batch in dataloader:
-            input_ids_1 = batch['input_ids_1'].to(device)
-            attention_mask_1 = batch['attention_mask_1'].to(device)
-            input_ids_2 = batch['input_ids_2'].to(device)
-            attention_mask_2 = batch['attention_mask_2'].to(device)
-            labels = batch['labels'].to(device).unsqueeze(1)
-
-            outputs = model(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
-            loss = criterion(outputs, labels)
-            total_loss += loss.item()
-            predictions = torch.sigmoid(outputs) > 0.5
-            correct_predictions += (predictions == labels).sum().item()
-    avg_loss = total_loss / len(dataloader)
-    accuracy = correct_predictions / len(dataloader.dataset)
-    return avg_loss, accuracy
-
-num_epochs = 5
-for epoch in range(num_epochs):
-    train_loss = trainEpoch(model, train_dataloader, optimizer, criterion, device)
-    val_loss, val_accuracy = evalEpoch(model, val_dataloader, criterion, device)
-    print(f"Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.4f}")
-
-# To get document embeddings after training:
-def get_document_embedding(text, model, tokenizer, device, max_len=128):
-    model.eval()
-    encoding = tokenizer(text, return_tensors='pt', truncation=True, padding='max_length', max_length=max_len).to(device)
-    with torch.no_grad():
-        outputs = model.bert(**encoding).pooler_output
-    return outputs.cpu().numpy()
-
-sample_doc = "Troubleshooting network connectivity issues."
-embedding = get_document_embedding(sample_doc, model, tokenizer, device)
-print(f"Embedding shape: {embedding.shape}")

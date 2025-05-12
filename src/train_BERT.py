@@ -18,7 +18,7 @@ from src.utils.Corpus import CacheCorpus, Factory_21_04_25_HIGH as CorpusFactory
 
 from skopt.space import Real, Integer
 from src.utils.AutoTuner import AutoTuner, Param
-from src.Doc2Vec_model import Model
+from src.S-BERT_model import Model
 
 MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/12-04-25_BERT.model"
 RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/27-04-25_evaluatuin.result"
@@ -35,13 +35,11 @@ testCorpus = None
 
 def createModel(**kwargs):
     global trainCorpus, testCorpus
-    model = Model(
-                dm_dbow_mode = "DM", 
-                alpha_init = ALPHA_INIT,
-                alpha_final = ALPHA_FINAL,
-                workers = 16,
-                **kwargs
-            )
+    model = Model.create(
+        eposchs = 6,
+        batchSize = 16,
+        **kwargs
+    )
 
     if trainCorpus == None:
         #trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD(50)
