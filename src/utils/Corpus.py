@@ -177,7 +177,7 @@ class SBertCorpus(MemoryCorpus):
     def __init__(self, adapter = None, limit = np.inf, includeOnlyID = True, max_len = 128):
         super().__init__(adapter, limit, includeOnlyID)
         self.max_len = max_len
-        self.data = tuple([SBertCorpus.createTaggedDocument(words = doc["text"], tags = doc["tags"], return_tensors='pt', truncation=True, padding='max_length', max_length=self.max_len) for doc in adapter.load(limit)])
+        self.data = tuple([SBertCorpus.createTaggedDocument(words = doc["text"], tags = doc["tags"], truncation=True, padding='max_length', max_length=self.max_len) for doc in adapter.load(limit)]) # return_tensors='pt'
         self.len = len(self.data)
         self.workingList = self.data
 
