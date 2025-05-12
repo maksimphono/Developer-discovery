@@ -69,14 +69,13 @@ DEFAULT_DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class SiameseBert(BertPreTrainedModel):
     @classmethod
     def configLogger(cls, path):
-        logger = logging.getLogger("gensim.models.doc2vec")  # Unique name
+        logger = logging.getLogger(__name__ + '.SiameseBert')  # Unique name
         logger.setLevel(logging.INFO)
         handler = logging.FileHandler(path)
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
-        return logging.getLogger("gensim.models.doc2vec")
     
     def __init__(self, config, epochs = 5, batchSize = 16, optimizer = None, device = DEFAULT_DEVICE, evaluator = None):
         super(SiameseBert, self).__init__(config)
@@ -84,7 +83,7 @@ class SiameseBert(BertPreTrainedModel):
         self.testCorpus = None
         self.trainDataLoader = None
         self.testDataLoader = None
-        self.logger = logging.getLogger("gensim.models.doc2vec")
+        self.logger = logging.getLogger(__name__ + '.SiameseBert')
         self.batchSize = batchSize
         self.epochs = epochs
         self.evaluator = evaluator
@@ -190,11 +189,15 @@ class SiameseBert(BertPreTrainedModel):
         return meanLoss, accuracy
 
     def train(self):
+        start = time()
         for epoch in range(self.epochs):
             trainLoss = trainEpoch()
             evalLoss, evalAccuracy = evalEpoch()
 
+            self.logger.info(f"Epoch {epoch + 1}/{self.epochs}, Train Loss: {trainLoss:.4f}, Val Loss: {evalLoss:.4f}, Val Accuracy: {evalAccuracy:.4f}")
             print(f"Epoch {epoch + 1}/{self.epochs}, Train Loss: {trainLoss:.4f}, Val Loss: {evalLoss:.4f}, Val Accuracy: {evalAccuracy:.4f}")
+
+        self.logger.info(f"\nTraining is completed in {time() - start}")
 
     def __call__(self, document):
         model.eval()
@@ -205,7 +208,20 @@ class SiameseBert(BertPreTrainedModel):
         #return super().__call__(*args, **kwargs)
 
     def evaluate(self):
-        pass
+        start = 0
+        result = 0
+        self.train()
+
+        self.trainCorpus.reset()
+
+        if self.evaluator != None:
+            start = time()
+            self.evaluator.setModel(self)
+            result = self.evaluator.evaluate()
+
+        self.logger.info(f"\nEvaluation is completed in {time() - start}; Result = {result}\n")
+
+        return result
 
 
 model = SiameseBert.from_pretrained('bert-base-uncased')
