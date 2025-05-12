@@ -20,6 +20,8 @@ from src.utils.helpers import flatternData
 import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
+from transformers import BertTokenizer
+from transformers.tokenization_utils_base import BatchEncoding
 
 class Corpus:
     # base class for every data corpus, that will be used by model
@@ -162,6 +164,30 @@ class Doc2VecCorpus(MemoryCorpus):
         else:
             self.workingList = self.data
 
+class SBertCorpus(MemoryCorpus):
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+
+    @classmethod
+    def createTaggedDocument(cls, words : str, tags : list, *args, **kwargs):
+        encoding = cls.tokenizer(words, *args, **kwargs)
+        encoding["tags"] = list(tags)
+
+        return encoding
+
+    def __init__(self, adapter = None, limit = np.inf, includeOnlyID = True, max_len = 128):
+        super().__init__(adapter, limit, includeOnlyID)
+        self.max_len = max_len
+        self.data = tuple([SBertCorpus.createTaggedDocument(words = doc["text"], tags = doc["tags"], truncation=True, padding='max_length', max_length=self.max_len) for doc in adapter.load(limit)]) # return_tensors='pt'
+        self.len = len(self.data)
+        self.workingList = self.data
+
+    def __len__(self):
+        return len(self.workingList)
+
+    def __getitem___(self, index):
+        return self.workingList[index]
+
+
 class PairsCorpus(MemoryCorpus):
     def __init__(self, adapter = None, limit = np.inf, includeOnlyID = True):
         self.limit = limit
@@ -229,3 +255,14 @@ class Factory_21_04_25_HIGH:
     def createTrainDBCorpus(cls, limit = np.inf):
         adapter = AdapterFactory_21_04_25.createTrainSetDBadepter()
         return FlatCorpus(adapter, limit = limit)
+
+    class BERT:
+        @classmethod
+        def createTrainCorpus(cls, limit = np.inf):
+            adapter = AdapterFactory_21_04_25.createTrainSetAdapter()
+            return SBertCorpus(adapter, limit = limit, max_len = 128)
+
+        @classmethod
+        def createTestCorpus(cls, limit = np.inf):
+            adapter = AdapterFactory_21_04_25.createTestSetAdapter()
+            return SBertCorpus(adapter, limit = limit, max_len = 128)
