@@ -83,6 +83,15 @@ class SiameseBert(BertPreTrainedModel):
 
         return model
 
+    @classmethod
+    def load(cls, path, device):
+        model = SiameseBert('bert-base-uncased')  # Create a new instance of the model
+        model.load_state_dict(torch.load(path)) # Load the saved state dictionary
+        model.to(device) # Move to the device
+        model.eval()
+
+        return loaded_model
+
     def __init__(self, config):
         super(SiameseBert, self).__init__(config)
         self.trainCorpus = None
@@ -236,6 +245,10 @@ class SiameseBert(BertPreTrainedModel):
         self.logger.info(f"\nEvaluation is completed in {time() - start}; Result = {result}\n")
 
         return result
+
+    def save(self, path):
+        torch.save(self.state_dict(), path)
+        self.logger(f"Model saved to {path}")
 
 
 model = SiameseBert.from_pretrained('bert-base-uncased')
