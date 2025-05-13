@@ -36,16 +36,16 @@ testCorpus = None
 def createModel(**kwargs):
     global trainCorpus, testCorpus
     model = Model.create(
-        epochs = 2,
-        batchSize = 8,
+        epochs = 8,
+        batchSize = 16,
         **kwargs
     )
 
     if trainCorpus == None:
         #trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD(50)
-        trainCorpus = CorpusFactory.BERT.createTrainCorpus(23)
+        trainCorpus = CorpusFactory.BERT.createTrainCorpus()
     if testCorpus == None:
-        testCorpus = CorpusFactory.BERT.createTestCorpus(23)
+        testCorpus = CorpusFactory.BERT.createTestCorpus()
 
     trainCorpus.reset()
     testCorpus.reset()
@@ -65,22 +65,12 @@ def saveModel(model):
 
 def main():
     start = time()
-    parameters = [
-        Param(_name = "vector_size", _type = Integer,  _range = (170, 220),   _initial = 175), # 185
-        Param(_name = "window",      _type = Integer,  _range = (5, 15),      _initial = 7),
-        Param(_name = "min_count",   _type = Integer,  _range = (7, 15),      _initial = 14),
-        Param(_name = "epochs",      _type = Integer,  _range = (35, 50),     _initial = 40),
-        Param(_name = "negative",    _type = Integer,  _range = (5, 20),      _initial = 18), # 5
-        Param(_name = "sample",      _type = Real,     _range = (1e-5, 1e-3), _initial = 0.0009151125514672825),
-    ]
-
-    #tuner = AutoTuner(createModel, parameters)
     model = createModel()
 
     try:
         # danger zone! Progress must be saved if error occure
         model.logger.info("Welcome!")
-        model.logger.info(f"\nAutotuner object created successfully with parameters: {[p.name for p in parameters]}\n")
+        #model.logger.info(f"\nAutotuner object created successfully with parameters: {[p.name for p in parameters]}\n")
         model.logger.info("Starting process of autotunning...\n")
     
         results = model.trainMe()

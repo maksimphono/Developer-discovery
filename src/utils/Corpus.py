@@ -261,11 +261,11 @@ class Factory_21_04_25_HIGH:
 
     class BERT:
         @classmethod
-        def createTrainCorpus(cls, limit = np.inf):
+        def createTrainCorpus(cls, limit = np.inf, max_len = 128):
             adapter = AdapterFactory_21_04_25.createTextTrainAdapter()
-            return SBertCorpus(adapter, limit = limit, max_len = 8)
+            return SBertCorpus(adapter, limit = limit, max_len = max_len)
 
         @classmethod
-        def createTestCorpus(cls, limit = np.inf):
+        def createTestCorpus(cls, limit = np.inf, max_len = 128):
             adapter = AdapterFactory_21_04_25.createTextTestAdapter()
-            return SBertCorpus(adapter, limit = limit, max_len = 8)
+            return SBertCorpus(adapter, limit = limit, max_len = max_len)
