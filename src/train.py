@@ -15,20 +15,23 @@ from src.utils.CacheAdapter import JSONMultiFileAdapter, EXP_END_OF_DATA, create
 from src.utils.DatasetManager import ProjectsDatasetManager
 from src.utils.validators import projectDataIsSufficient
 from src.utils.Corpus import CacheCorpus, Factory_21_04_25_HIGH as CorpusFactory
+from src.utils.Evaluator import Evaluator
+from src.utils.helpers import eucledianDistance as similarity #cosineSimilarity as similarity
 
 from skopt.space import Real, Integer
 from src.utils.AutoTuner import AutoTuner, Param
 from src.Doc2Vec_model import Model
 
-MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/27-04-25_Doc2Vec.model"
-RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/27-04-25_evaluatuin.result"
-TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/27-04-25_autotunning.log"
-TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/27-04-25_training.log"
+MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/13-05-25_Doc2Vec.model"
+RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/13-05-25_evaluatuin.result"
+TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/13-05-25_autotunning.log"
+TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/13-05-25_training.log"
 
 # creating model
 
 ALPHA_INIT = 0.05
 ALPHA_FINAL = 0.00001
+
 
 trainCorpus = None
 testCorpus = None
