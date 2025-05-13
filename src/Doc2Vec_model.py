@@ -198,7 +198,7 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         else:
             return result
 
-    def __call__(self, document):
+    def call(self, document):
         # method, that will be used to get vector representation of the document (in this case TaggedDocument)
         return self.dv.infer_vector(document.words)
 

@@ -141,6 +141,8 @@ class MemoryCorpus(CacheCorpus):
         self.reset()
 
     def __getitem__(self, _indexes):
+        if isinstanceof(_indexes, int):
+            return self.workingList[_indexes]
         return [self.workingList[i] for i in _indexes]
 
 
