@@ -295,6 +295,9 @@ class Factory_21_04_25_HIGH:
         return FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/test_text_21-04-25")
 
 
+    @classmethod
+    def createTextTestAdapter(cls):
+        return FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/test_text_21-04-25")
 
 class EvaluationAdapterFactory:
     @classmethod

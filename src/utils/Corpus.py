@@ -21,6 +21,7 @@ import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from transformers import BertTokenizer
+from torch import tensor
 from transformers.tokenization_utils_base import BatchEncoding
 
 class Corpus:
@@ -140,6 +141,8 @@ class MemoryCorpus(CacheCorpus):
         self.reset()
 
     def __getitem__(self, _indexes):
+        if isinstanceof(_indexes, int):
+            return self.workingList[_indexes]
         return [self.workingList[i] for i in _indexes]
 
 
@@ -170,7 +173,7 @@ class SBertCorpus(MemoryCorpus):
     @classmethod
     def createTaggedDocument(cls, words : str, tags : list, *args, **kwargs):
         encoding = cls.tokenizer(words, *args, **kwargs)
-        encoding["tags"] = list(tags) + [0] * (8 - len(tags))
+        encoding["tags"] = tensor([hash(tag) for tag in tags] + [0] * (8 - len(tags)))
 
         return encoding
 
@@ -185,6 +188,7 @@ class SBertCorpus(MemoryCorpus):
     def __len__(self):
         return len(self.workingList)
 
+    def __getitem__(self, index):
     def __getitem__(self, index):
         return self.workingList[index]
 
@@ -259,11 +263,11 @@ class Factory_21_04_25_HIGH:
 
     class BERT:
         @classmethod
-        def createTrainCorpus(cls, limit = np.inf):
+        def createTrainCorpus(cls, limit = np.inf, max_len = 128):
             adapter = AdapterFactory_21_04_25.createTextTrainAdapter()
-            return SBertCorpus(adapter, limit = limit, max_len = 8)
+            return SBertCorpus(adapter, limit = limit, max_len = max_len)
 
         @classmethod
-        def createTestCorpus(cls, limit = np.inf):
+        def createTestCorpus(cls, limit = np.inf, max_len = 128):
             adapter = AdapterFactory_21_04_25.createTextTestAdapter()
-            return SBertCorpus(adapter, limit = limit, max_len = 8)
+            return SBertCorpus(adapter, limit = limit, max_len = max_len)

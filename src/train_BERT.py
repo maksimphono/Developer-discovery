@@ -15,15 +15,17 @@ from src.utils.CacheAdapter import JSONMultiFileAdapter, EXP_END_OF_DATA, create
 from src.utils.DatasetManager import ProjectsDatasetManager
 from src.utils.validators import projectDataIsSufficient
 from src.utils.Corpus import CacheCorpus, Factory_21_04_25_HIGH as CorpusFactory
+from src.utils.Evaluator import Evaluator
 
 from skopt.space import Real, Integer
 from src.utils.AutoTuner import AutoTuner, Param
-from src.S-BERT_model import SiameseBert as Model
+from src.SBERT_model import SiameseBert as Model
+from src.utils.helpers import cosineSimilarity as similarity # eucledianDistance as similarity
 
-MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/12-04-25_BERT.model"
-RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/12-04-25_evaluatuin.result"
-TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/12-04-25_autotunning.log"
-TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/12-04-25_training.log"
+MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/13-05-25_BERT.model"
+RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/13-05-25_evaluatuin.result"
+TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/13-05-25_autotunning.log"
+TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/13-05-25_training.log"
 
 # creating model
 
@@ -32,25 +34,31 @@ ALPHA_FINAL = 0.00001
 
 trainCorpus = None
 testCorpus = None
+evaluator = None
 
 def createModel(**kwargs):
     global trainCorpus, testCorpus
     model = Model.create(
-        epochs = 8,
+        epochs = 9,
         batchSize = 16,
         **kwargs
     )
 
     if trainCorpus == None:
         #trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD(50)
-        trainCorpus = CorpusFactory.createFlatTrainCorpus()
+        trainCorpus = CorpusFactory.BERT.createTrainCorpus()
     if testCorpus == None:
-        testCorpus = CorpusFactory.createFlatTestCorpus()
+        testCorpus = CorpusFactory.BERT.createTestCorpus()
+    if evaluator == None:
+        relatedAda, unrelatedAda = EvaluationAdapterFactory.createProjectsEvaluationGroups()
+        evaluator = Evaluator(relatedAda, unrelatedAda, testCorpus)
+        evaluator.setSimilarityCheck(similarity)
 
     trainCorpus.reset()
     testCorpus.reset()
     model.setTrainCorpus(trainCorpus)
     model.setTestCorpus(testCorpus)
+    model.evaluator = evaluator
 
     return model
 
@@ -65,37 +73,28 @@ def saveModel(model):
 
 def main():
     start = time()
-    parameters = [
-        Param(_name = "vector_size", _type = Integer,  _range = (170, 220),   _initial = 175), # 185
-        Param(_name = "window",      _type = Integer,  _range = (5, 15),      _initial = 7),
-        Param(_name = "min_count",   _type = Integer,  _range = (7, 15),      _initial = 14),
-        Param(_name = "epochs",      _type = Integer,  _range = (35, 50),     _initial = 40),
-        Param(_name = "negative",    _type = Integer,  _range = (5, 20),      _initial = 18), # 5
-        Param(_name = "sample",      _type = Real,     _range = (1e-5, 1e-3), _initial = 0.0009151125514672825),
-    ]
-
-    #tuner = AutoTuner(createModel, parameters)
     model = createModel()
 
     try:
         # danger zone! Progress must be saved if error occure
-        tuner.logger.info("Welcome!")
-        tuner.logger.info(f"\nAutotuner object created successfully with parameters: {[p.name for p in parameters]}\n")
-        tuner.logger.info("Starting process of autotunning...\n")
-    
+        model.logger.info("Welcome!")
+        #model.logger.info(f"\nAutotuner object created successfully with parameters: {[p.name for p in parameters]}\n")
+        model.logger.info("Starting process of model training...\n")
+
         results = model.evaluate()
 
         end = time()
-        tuner.logger.info(f"\n\nProcess completed in {(end - start) / 60} min\n")
-        tuner.logger.info(f"Found best evaluation value {results.fun} with parameters: {results.x}\n")
+        model.logger.info(f"\n\nProcess completed in {(end - start) / 60} min\n")
+        model.logger.info(f"Found best evaluation value {results}\n")
 
         with open(RESULTS_RECORD_PATH, "w") as file:
             print(results, file = file)
     
     except Exception as exp:
-        tuner.logger.error(f"Error occured, last best performance score was {Model.bestScore} with parameters {Model.bestParameters}\n")
-        tuner.logger.error(str(exp))
+        #model.logger.error(f"Error occured, last best performance score was {Model.bestScore} with parameters {Model.bestParameters}\n")
+        model.logger.error(str(exp))
         print("Error occured")
+        raise exp
         exit(1)
 
     finally:

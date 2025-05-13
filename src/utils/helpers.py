@@ -1,6 +1,7 @@
 import numpy as np
 from time import time
-from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics.pairwise import cosine_similarity, pairwise_distances
+
 
 def flatternData(data : dict[str, list]) -> np.array(dict):
     # takes in data in form of dict, where each key is a user id and each value is a list of that user's projects
@@ -64,3 +65,13 @@ def cosineSimilarity(vec1, vec2):
     # Calculate cosine similarity using scikit-learn
     similarity_matrix = cosine_similarity(vec1, vec2)
     return similarity_matrix[0, 0] # Extract the scalar value
+
+def eucledianDistance(vec1, vec2):
+    vec1 = np.array(vec1)
+    vec2 = np.array(vec2)
+
+    if vec1.shape[0] != vec2.shape[0]:
+        raise ValueError("Vectors must have the same dimension.")
+
+    similarity_matrix = pairwise_distances([vec1, vec2])
+    return similarity_matrix[0, 1] # Extract the scalar value
