@@ -21,6 +21,7 @@ import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from transformers import BertTokenizer
+from torch import tensor
 from transformers.tokenization_utils_base import BatchEncoding
 
 class Corpus:
@@ -170,7 +171,7 @@ class SBertCorpus(MemoryCorpus):
     @classmethod
     def createTaggedDocument(cls, words : str, tags : list, *args, **kwargs):
         encoding = cls.tokenizer(words, *args, **kwargs)
-        encoding["tags"] = list(tags) + [0] * (8 - len(tags))
+        encoding["tags"] = tensor([hash(tag) for tag in tags] + [0] * (8 - len(tags)))
 
         return encoding
 

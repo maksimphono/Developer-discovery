@@ -25,8 +25,7 @@ from torch.optim import AdamW
 
 def areRelevant(tags1, tags2):
     print("Checking similarity")
-    print(tags1, tags2)
-    return len(set(tags1) & set(tags2)) >= 1
+    return len(tuple(filter(lambda x: x != 0, set(tags1.tolist()) & set(tags2.tolist())))) >= 1
 
 def createPairsFromBatch(batch):
     pairsBatch = {
@@ -178,7 +177,6 @@ class SiameseBert(BertPreTrainedModel):
 
         for batch in self.trainDataLoader:
             print("Starting training one batch")
-            #print(batch['input_ids'])
             input()
             pairs = createPairsFromBatch(batch)
             input_ids_1 = pairs['input_ids_1'].to(self.dev)
@@ -189,7 +187,7 @@ class SiameseBert(BertPreTrainedModel):
 
             print("batch unpacked")
             self.optimizer.zero_grad()
-            outputs = super().__call__(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
+            outputs = self(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
             loss = self.criterion(outputs, labels)
             loss.backward()
             self.optimizer.step()
@@ -215,7 +213,7 @@ class SiameseBert(BertPreTrainedModel):
                 labels = pairs['labels'].to(self.dev)
                 print("batch unpacked")
 
-                outputs = super().__call__(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
+                outputs = self(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
                 loss = self.criterion(outputs, labels)
                 totalLoss += loss.item()
                 predictions = torch.sigmoid(outputs) > 0.5
@@ -241,7 +239,7 @@ class SiameseBert(BertPreTrainedModel):
         self.logger.info(f"\nTraining is completed in {time() - start}")
         print(f"\nTraining is completed in {time() - start}")
 
-    def __call__(self, document):
+    def call(self, document):
         model.eval()
         print(f"model is called with {document['input_ids']}")
         #encoding = tokenizer(text, return_tensors='pt', truncation=True, padding='max_length', max_length=128)  # Or your desired max_length
