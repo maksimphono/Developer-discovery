@@ -24,7 +24,7 @@ import torch.nn.functional as F
 from torch.optim import AdamW
 
 def areRelevant(tags1, tags2):
-    print("Checking similarity")
+    # print("Checking similarity")
     return len(tuple(filter(lambda x: x != 0, set(tags1.tolist()) & set(tags2.tolist())))) >= 1
 
 def createPairsFromBatch(batch):
@@ -39,9 +39,7 @@ def createPairsFromBatch(batch):
         if i >= len(batch['tags']): break
         for j in range(i + 1, len(batch['input_ids'])):
             if j >= len(batch['tags']): break
-            #doc1 = batch[i]
-            #doc2 = batch[j]
-            print(len(batch['tags']))
+            # print(len(batch['tags']))
             pairsBatch["input_ids_1"].append(tensor(batch['input_ids'][i]))
             pairsBatch["input_ids_2"].append(tensor(batch['input_ids'][j]))
             pairsBatch["attention_mask_1"].append(tensor(batch['attention_mask'][i]))
@@ -104,7 +102,8 @@ class SiameseBert(BertPreTrainedModel):
         #self.fc = nn.Linear(config.hidden_size, 1)
         self.init_weights()
 
-        print("Bert initialized")
+        self.logger.info(f"Bert model initialized")
+        # print("Bert initialized")
 
     def prepare(self, epochs = 5, batchSize = 16, optimizer = None, device = DEFAULT_DEVICE, evaluator = None):
         self.batchSize = batchSize
@@ -118,17 +117,20 @@ class SiameseBert(BertPreTrainedModel):
         else:
             self.optimizer = optimizer
 
-        print("Bert prepared")
+        self.logger.info(f"Bert model prepared with epochs = {epochs}, batch size = {batchSize}, optimizer = {self.optimizer}, device = {self.dev}")
+        # print("Bert prepared")
 
     def setTrainCorpus(self, corpus):
         self.trainCorpus = corpus
         self.trainDataLoader = DataLoader(self.trainCorpus, batch_size=self.batchSize, shuffle=True)
-        print("self.trainDataLoader is set")
+        self.logger.info(f"Train DataLoader is set, length = {len(self.trainCorpus)}")
+        # print("self.trainDataLoader is set")
 
     def setTestCorpus(self, corpus):
         self.testCorpus = corpus
         self.testDataLoader = DataLoader(self.testCorpus, batch_size=self.batchSize)
-        print("self.testDataLoader is set")
+        self.logger.info(f"Test DataLoader is set, length = {len(self.testCorpus)}")
+        # print("self.testDataLoader is set")
 
     def forward(self, input_ids_1, attention_mask_1, input_ids_2, attention_mask_2):
         output1 = self.bert(input_ids=input_ids_1, attention_mask=attention_mask_1)
@@ -138,13 +140,9 @@ class SiameseBert(BertPreTrainedModel):
         embedding1 = output1.pooler_output
         embedding2 = output2.pooler_output
 
-        print(f"\n\nShape of output: {embedding2.shape}\n\n")
-
         # Calculate similarity (e.g., cosine similarity followed by a linear layer)
-        print(f"Embedding size {embedding1.size}")
         similarity = F.cosine_similarity(embedding1, embedding2, dim=1).unsqueeze(1)
         #prediction = self.fc(similarity.unsqueeze(1))
-        #print()
         prediction = torch.bmm(
             similarity.view(
                 similarity.size(0), 
@@ -158,8 +156,8 @@ class SiameseBert(BertPreTrainedModel):
             ).transpose(1, 2)
         ) + self.b.unsqueeze(0)
         prediction = prediction.squeeze(1)
-        print(f"Prediction shape: {prediction.shape}")
-        print("forward is called")
+        # print(f"Prediction shape: {prediction.shape}")
+        # print("forward is called")
         return prediction
 
     def unpackBatch(self, batch):
@@ -178,8 +176,8 @@ class SiameseBert(BertPreTrainedModel):
         totalLoss = 0
 
         for batch in self.trainDataLoader:
-            print("Starting training one batch")
-            input()
+            # print("Starting training one batch")
+            # input()
             pairs = createPairsFromBatch(batch)
             input_ids_1 = pairs['input_ids_1'].to(self.dev)
             attention_mask_1 = pairs['attention_mask_1'].to(self.dev)
@@ -187,7 +185,7 @@ class SiameseBert(BertPreTrainedModel):
             attention_mask_2 = pairs['attention_mask_2'].to(self.dev)
             labels = pairs['labels'].to(self.dev)
 
-            print("batch unpacked")
+            # print("batch unpacked")
             self.optimizer.zero_grad()
             outputs = self(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
             loss = self.criterion(outputs, labels)
@@ -195,7 +193,7 @@ class SiameseBert(BertPreTrainedModel):
             self.optimizer.step()
             totalLoss += loss.item()
 
-            print("Train epoch completed")
+            # print("Train epoch completed")
 
         return totalLoss / len(self.trainDataLoader)
 
@@ -213,7 +211,7 @@ class SiameseBert(BertPreTrainedModel):
                 input_ids_2 = pairs['input_ids_2'].to(self.dev)
                 attention_mask_2 = pairs['attention_mask_2'].to(self.dev)
                 labels = pairs['labels'].to(self.dev)
-                print("batch unpacked")
+                # print("batch unpacked")
 
                 outputs = self(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
                 loss = self.criterion(outputs, labels)
@@ -222,7 +220,7 @@ class SiameseBert(BertPreTrainedModel):
                 correctPredictions += (predictions == labels).sum().item()
                 totalPairsNum += labels.size(0)
 
-                print("Eval epoch completed")
+                # print("Eval epoch completed")
 
         meanLoss = totalLoss / len(self.testDataLoader)
         accuracy = correctPredictions / totalPairsNum
@@ -231,19 +229,21 @@ class SiameseBert(BertPreTrainedModel):
 
     def trainMe(self):
         start = time()
+
+        self.logger.info(f"Training started, epochs = {self.epochs}\n")
         for epoch in range(self.epochs):
             trainLoss = self.trainEpoch()
             evalLoss, evalAccuracy = self.evalEpoch()
 
             self.logger.info(f"Epoch {epoch + 1}/{self.epochs}, Train Loss: {trainLoss:.4f}, Val Loss: {evalLoss:.4f}, Val Accuracy: {evalAccuracy:.4f}")
-            print(f"Epoch {epoch + 1}/{self.epochs}, Train Loss: {trainLoss:.4f}, Val Loss: {evalLoss:.4f}, Val Accuracy: {evalAccuracy:.4f}")
+            # print(f"Epoch {epoch + 1}/{self.epochs}, Train Loss: {trainLoss:.4f}, Val Loss: {evalLoss:.4f}, Val Accuracy: {evalAccuracy:.4f}")
 
         self.logger.info(f"\nTraining is completed in {time() - start}")
-        print(f"\nTraining is completed in {time() - start}")
+        # print(f"\nTraining is completed in {time() - start}")
 
     def call(self, document):
         model.eval()
-        print(f"model is called with {document['input_ids']}")
+        # print(f"model is called with {document['input_ids']}")
         #encoding = tokenizer(text, return_tensors='pt', truncation=True, padding='max_length', max_length=128)  # Or your desired max_length
         input_ids = tensor(document['input_ids']).unsqueeze(0).to(self.dev)
         attention_mask = tensor(document['attention_mask']).unsqueeze(0).to(self.dev)
@@ -265,7 +265,7 @@ class SiameseBert(BertPreTrainedModel):
             result = self.evaluator.evaluate()
 
         self.logger.info(f"\nEvaluation is completed in {time() - start}; Result = {result}\n")
-        print(f"\nEvaluation is completed in {time() - start}; Result = {result}\n")
+        # print(f"\nEvaluation is completed in {time() - start}; Result = {result}\n")
 
         return result
 
