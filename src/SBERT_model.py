@@ -35,11 +35,13 @@ def createPairsFromBatch(batch):
         "attention_mask_2" : [],
         "labels" : []
     }
-    for i in range(len(batch)):
-        for j in range(i + 1, len(batch)):
+    for i in range(len(batch['input_ids'])):
+        if i >= len(batch['tags']): break
+        for j in range(i + 1, len(batch['input_ids'])):
+            if j >= len(batch['tags']): break
             #doc1 = batch[i]
             #doc2 = batch[j]
-            print(len(batch))
+            print(len(batch['tags']))
             pairsBatch["input_ids_1"].append(tensor(batch['input_ids'][i]))
             pairsBatch["input_ids_2"].append(tensor(batch['input_ids'][j]))
             pairsBatch["attention_mask_1"].append(tensor(batch['attention_mask'][i]))

@@ -43,9 +43,9 @@ def createModel(**kwargs):
 
     if trainCorpus == None:
         #trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD(50)
-        trainCorpus = CorpusFactory.BERT.createTrainCorpus(16)
+        trainCorpus = CorpusFactory.BERT.createTrainCorpus(23)
     if testCorpus == None:
-        testCorpus = CorpusFactory.BERT.createTestCorpus(16)
+        testCorpus = CorpusFactory.BERT.createTestCorpus(23)
 
     trainCorpus.reset()
     testCorpus.reset()
