@@ -21,7 +21,7 @@ import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from transformers import BertTokenizer
-from torch import tensor
+from torch import tensor, float as torch_float
 from transformers.tokenization_utils_base import BatchEncoding
 
 class Corpus:
@@ -191,19 +191,30 @@ class SBertCorpus(MemoryCorpus):
         return self.workingList[index]
 
 
-class PairsCorpus(MemoryCorpus):
-    def __init__(self, adapter = None, limit = np.inf, includeOnlyID = True):
-        self.limit = limit
-        self.adapter = adapter
-        self.position = 0
-        self.data = tuple([pair for pair in adapter.load(limit)])
-        self.dataOnlyID = tuple()
-
+class SBertPairsCorpus(MemoryCorpus):
+    def __init__(self, adapter = None, relatedPairsAdapter = None, unrelatedPairsAdapter = None, limit = np.inf, includeOnlyID = True, max_len = 128):
+        super().__init__(adapter, limit, includeOnlyID)
+        self.max_len = max_len
+        self.pairs = tuple([pair for pair in relatedPairsAdapter.load(int(limit / 2))] + [pair for pair in unrelatedPairsAdapter.load(int(np.ceil(limit / 2)))]) # return_tensors='pt'
+        self.data = tuple([BatchEncoding(encoding) for encoding in adapter.load(limit)])
         self.len = len(self.data)
-        self.workingList = self.data
+        self.workingList = self.pairs
 
-    def reset(self):
-        self.position = 0
+    def __len__(self):
+        return len(self.workingList)
+
+    def __getitem__(self, index):
+        # prepares an actual of documents and yields it
+        index1, index2, label = tuple(self.workingList[index].values())
+        doc1, doc2 = (self.data[index1], self.data[index2])
+
+        return {
+            "input_ids_1" : tensor(doc1['input_ids']),
+            "input_ids_2" : tensor(doc2['input_ids']),
+            "attention_mask_1" : tensor(doc1['attention_mask']),
+            "attention_mask_2" : tensor(doc2['attention_mask']),
+            "labels" : tensor(label, dtype=torch_float)
+        }
 
 
 from src.utils.CacheAdapter import createTestSetAdapter_02_04_25_GOOD, createTrainSetAdapter_02_04_25_GOOD, createTrainSetDBadepter_02_04_25_GOOD, createTestSetDBadepter_02_04_25_GOOD
