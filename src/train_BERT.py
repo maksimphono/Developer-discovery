@@ -37,15 +37,15 @@ def createModel(**kwargs):
     global trainCorpus, testCorpus, evaluator
     model = Model.create(
         epochs = 2,
-        batchSize = 8,
+        batchSize = 4,
         **kwargs
     )
 
     if trainCorpus == None:
         #trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD(50)
-        trainCorpus = CorpusFactory.BERT.createTrainCorpus(16, max_len = 8)
+        trainCorpus = CorpusFactory.BERT.createTrainPairsCorpus(16)
     if testCorpus == None:
-        testCorpus = CorpusFactory.BERT.createTestCorpus()
+        testCorpus = CorpusFactory.BERT.createTestPairsCorpus()
 
     trainCorpus.reset()
     testCorpus.reset()

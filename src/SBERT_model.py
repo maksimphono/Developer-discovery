@@ -178,12 +178,12 @@ class SiameseBert(BertPreTrainedModel):
         for batch in self.trainDataLoader:
             # print("Starting training one batch")
             # input()
-            pairs = createPairsFromBatch(batch)
-            input_ids_1 = pairs['input_ids_1'].to(self.dev)
-            attention_mask_1 = pairs['attention_mask_1'].to(self.dev)
-            input_ids_2 = pairs['input_ids_2'].to(self.dev)
-            attention_mask_2 = pairs['attention_mask_2'].to(self.dev)
-            labels = pairs['labels'].to(self.dev)
+            #pairs = createPairsFromBatch(batch)
+            input_ids_1 = batch['input_ids_1'].to(self.dev)
+            attention_mask_1 = batch['attention_mask_1'].to(self.dev)
+            input_ids_2 = batch['input_ids_2'].to(self.dev)
+            attention_mask_2 = batch['attention_mask_2'].to(self.dev)
+            labels = batch['labels'].to(self.dev).unsqueeze(1)
 
             # print("batch unpacked")
             self.optimizer.zero_grad()
@@ -205,12 +205,12 @@ class SiameseBert(BertPreTrainedModel):
 
         with torch.no_grad():
             for batch in self.testDataLoader:
-                pairs = createPairsFromBatch(batch)
-                input_ids_1 = pairs['input_ids_1'].to(self.dev)
-                attention_mask_1 = pairs['attention_mask_1'].to(self.dev)
-                input_ids_2 = pairs['input_ids_2'].to(self.dev)
-                attention_mask_2 = pairs['attention_mask_2'].to(self.dev)
-                labels = pairs['labels'].to(self.dev)
+                #pairs = createPairsFromBatch(batch)
+                input_ids_1 = batch['input_ids_1'].to(self.dev)
+                attention_mask_1 = batch['attention_mask_1'].to(self.dev)
+                input_ids_2 = batch['input_ids_2'].to(self.dev)
+                attention_mask_2 = batch['attention_mask_2'].to(self.dev)
+                labels = batch['labels'].to(self.dev).unsqueeze(1)
                 # print("batch unpacked")
 
                 outputs = self(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
@@ -252,7 +252,7 @@ class SiameseBert(BertPreTrainedModel):
             output = self.bert(input_ids=input_ids, attention_mask=attention_mask).pooler_output
         return output
 
-    def evaluate(self):
+    def evaluate(self, beforeEvaluation = lambda: None):
         start = 0
         result = 0
         self.train()
@@ -260,6 +260,7 @@ class SiameseBert(BertPreTrainedModel):
         self.trainCorpus.reset()
 
         if self.evaluator != None:
+            beforeEvaluation()
             start = time()
             self.evaluator.setModel(self)
             self.evaluator.logger = self.logger
