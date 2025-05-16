@@ -2,17 +2,17 @@ import sys
 sys.path.append('/home/trukhinmaksim/src')
 from time import time
 
-from src.utils.Corpus import MemoryCorpus
+from src.utils.Corpus import MemoryCorpus, Factory_21_04_25_HIGH as CorpusFactory
 from src.utils.CacheAdapter import Factory_21_04_25_HIGH
+from torch.utils.data import DataLoader
 
-corp = MemoryCorpus(Factory_21_04_25_HIGH.createFlatAdapter())
-#corp.onlyID = True
+testCorp = CorpusFactory.BERT.createTestPairsCorpus(16)
 
-start = time()
-c = 0
-for doc in corp:
-    c += 1
+loader = DataLoader(testCorp, batch_size=4, shuffle=False)
 
-print(f"Spent : {time() - start}")
+for i, batch in enumerate(loader):
+    #print(batch["input_ids_1"][0])
+    #print(batch["input_ids_2"][0])
+    #print(batch["labels"].unsqueeze(1).shape)
 
-print(corp[[2]])
+    if i >= 1: break

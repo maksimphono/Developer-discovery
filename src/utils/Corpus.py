@@ -12,7 +12,7 @@ from copy import deepcopy
 
 from gensim.models.doc2vec import TaggedDocument
 
-from src.utils.CacheAdapter import CacheAdapter, JSONAdapter, JSONMultiFileAdapter, EXP_END_OF_DATA, createTrainSetAdapter_02_04_25_GOOD, Factory_21_04_25_HIGH as AdapterFactory_21_04_25
+from src.utils.CacheAdapter import CacheAdapter, FlatAdapter, JSONAdapter, JSONMultiFileAdapter, EXP_END_OF_DATA, createTrainSetAdapter_02_04_25_GOOD, Factory_21_04_25_HIGH as AdapterFactory_21_04_25
 from src.utils.DatasetManager import ProjectsDatasetManager
 from src.utils.validators import projectDataIsSufficient
 from src.utils.helpers import flatternData
@@ -21,7 +21,7 @@ import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from transformers import BertTokenizer
-from torch import tensor
+from torch import tensor, float as torch_float
 from transformers.tokenization_utils_base import BatchEncoding
 
 class Corpus:
@@ -141,7 +141,7 @@ class MemoryCorpus(CacheCorpus):
         self.reset()
 
     def __getitem__(self, _indexes):
-        if isinstanceof(_indexes, int):
+        if isinstance(_indexes, int):
             return self.workingList[_indexes]
         return [self.workingList[i] for i in _indexes]
 
@@ -174,6 +174,7 @@ class SBertCorpus(MemoryCorpus):
     def createTaggedDocument(cls, words : str, tags : list, *args, **kwargs):
         encoding = cls.tokenizer(words, *args, **kwargs)
         encoding["tags"] = tensor([hash(tag) for tag in tags] + [0] * (8 - len(tags)))
+        encoding["tags"] = tensor([hash(tag) for tag in tags] + [0] * (8 - len(tags)))
 
         return encoding
 
@@ -189,23 +190,34 @@ class SBertCorpus(MemoryCorpus):
         return len(self.workingList)
 
     def __getitem__(self, index):
-    def __getitem__(self, index):
         return self.workingList[index]
 
 
-class PairsCorpus(MemoryCorpus):
-    def __init__(self, adapter = None, limit = np.inf, includeOnlyID = True):
-        self.limit = limit
-        self.adapter = adapter
-        self.position = 0
-        self.data = tuple([pair for pair in adapter.load(limit)])
-        self.dataOnlyID = tuple()
-
+class SBertPairsCorpus(MemoryCorpus):
+    # acts like a corpus, filled with actual pairs or related and unrelated documents
+    def __init__(self, adapter = None, relatedPairsAdapter = None, unrelatedPairsAdapter = None, limit = np.inf, includeOnlyID = True, max_len = 128):
+        super().__init__(adapter, limit, includeOnlyID)
+        self.max_len = max_len
+        self.pairs = tuple([pair for pair in relatedPairsAdapter.load(np.floor(limit / 2))] + [pair for pair in unrelatedPairsAdapter.load(np.ceil(limit / 2))]) # return_tensors='pt'
+        self.data = tuple([BatchEncoding(encoding) for encoding in adapter.load(np.inf)])
         self.len = len(self.data)
-        self.workingList = self.data
+        self.workingList = self.pairs
 
-    def reset(self):
-        self.position = 0
+    def __len__(self):
+        return len(self.workingList)
+
+    def __getitem__(self, index):
+        # prepares an actual pair of documents and yields it
+        index1, index2, label = tuple(self.workingList[index].values())
+        doc1, doc2 = (self.data[index1], self.data[index2])
+
+        return {
+            "input_ids_1" : tensor(doc1['input_ids']),
+            "input_ids_2" : tensor(doc2['input_ids']),
+            "attention_mask_1" : tensor(doc1['attention_mask']),
+            "attention_mask_2" : tensor(doc2['attention_mask']),
+            "labels" : tensor(label, dtype=torch_float)
+        }
 
 
 from src.utils.CacheAdapter import createTestSetAdapter_02_04_25_GOOD, createTrainSetAdapter_02_04_25_GOOD, createTrainSetDBadepter_02_04_25_GOOD, createTestSetDBadepter_02_04_25_GOOD
@@ -271,3 +283,17 @@ class Factory_21_04_25_HIGH:
         def createTestCorpus(cls, limit = np.inf, max_len = 128):
             adapter = AdapterFactory_21_04_25.createTextTestAdapter()
             return SBertCorpus(adapter, limit = limit, max_len = max_len)
+
+        @classmethod
+        def createTrainPairsCorpus(cls, limit = np.inf):
+            adapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/train_tokenized_BERT_21-04-25")
+            relatedAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/train_related_pairs_idx_1538100_21-04-25")
+            unrelatedAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/train_unrelated_pairs_idx_1538100_21-04-25")
+            return SBertPairsCorpus(adapter, relatedPairsAdapter = relatedAdapter, unrelatedPairsAdapter = unrelatedAdapter, limit = limit)
+
+        @classmethod
+        def createTestPairsCorpus(cls, limit = np.inf):
+            adapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/test_tokenized_BERT_21-04-25")
+            relatedAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/test_related_pairs_idx_271436_21-04-25")
+            unrelatedAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/test_unrelated_pairs_idx_271436_21-04-25")
+            return SBertPairsCorpus(adapter, relatedPairsAdapter = relatedAdapter, unrelatedPairsAdapter = unrelatedAdapter, limit = limit)

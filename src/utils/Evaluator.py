@@ -39,8 +39,8 @@ class Evaluator:
         except EXP_END_OF_DATA:
             pass
 
-        print(f"Got {len(self.relatedPairs)} related pairs")
-        print(f"Got {len(self.unrelatedPairs)} unrelated pairs")
+        # print(f"Got {len(self.relatedPairs)} related pairs")
+        # print(f"Got {len(self.unrelatedPairs)} unrelated pairs")
         if self.logger != None:
             self.logger.info(f"Got {len(self.relatedPairs)} related pairs")
             self.logger.info(f"Got {len(self.unrelatedPairs)} unrelated pairs")
@@ -56,7 +56,7 @@ class Evaluator:
         self.similarityCheck = fn
 
     def statisticalTest(self, group1, group0):
-        print(f"Using Mann-W test on group1 = {group1[:10]}... group0 = {group0[:10]}...")
+        # print(f"Using Mann-W test on group1 = {group1[:10]}... group0 = {group0[:10]}...")
         if self.logger != None: self.logger.info(f"Using Mann-W test on group1 = {group1[:10]}... group0 = {group0[:10]}...")
         u_statistic, p_value = mannwhitneyu(group1, group0, alternative = "less") # , alternative = "less"
 
@@ -74,7 +74,7 @@ class Evaluator:
             return vec
 
     def evaluate(self):
-        print(f"Called Evaluate.evaluate() method, model = {repr(self.model)} relatedPairs = {self.relatedPairs[:3]}...")
+        # print(f"Called Evaluate.evaluate() method, model = {repr(self.model)} relatedPairs = {self.relatedPairs[:3]}...")
         if self.logger != None: self.logger.info(f"Called Evaluate.evaluate() method, model = {repr(self.model)} relatedPairs = {self.relatedPairs[:3]}...")
         for pairs, similarities in ((self.relatedPairs, self.relatedPairsSimilarities), (self.unrelatedPairs, self.unrelatedPairsSimilarities)):
             for pair in pairs:
@@ -112,6 +112,7 @@ class UsersEvaluator(Evaluator):
             return self.memorizedVectors[proj_id]
         else:
             doc = self.tokenizer([*project.values()][0])
+            vector = self.model.call(doc)
             vector = self.model.call(doc)
             self.memorizedVectors[proj_id] = vector
             return vector

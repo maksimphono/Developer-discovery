@@ -11,7 +11,7 @@ from random import sample, seed as randomSeed
 from collections import defaultdict
 from numpy import mean
 
-from src.utils.CacheAdapter import JSONMultiFileAdapter, EXP_END_OF_DATA, createAdapter_02_04_25_GOOD
+from src.utils.CacheAdapter import JSONMultiFileAdapter, EXP_END_OF_DATA, createAdapter_02_04_25_GOOD, EvaluationAdapterFactory
 from src.utils.DatasetManager import ProjectsDatasetManager
 from src.utils.validators import projectDataIsSufficient
 from src.utils.Corpus import CacheCorpus, Factory_21_04_25_HIGH as CorpusFactory
@@ -37,7 +37,7 @@ testCorpus = None
 evaluator = None
 
 def createModel(**kwargs):
-    global trainCorpus, testCorpus
+    global trainCorpus, testCorpus, evaluator
     model = Model.create(
         epochs = 9,
         batchSize = 16,
@@ -46,7 +46,7 @@ def createModel(**kwargs):
 
     if trainCorpus == None:
         #trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD(50)
-        trainCorpus = CorpusFactory.BERT.createTrainCorpus()
+        trainCorpus = CorpusFactory.BERT.createTrainPairsCorpus(16)
     if testCorpus == None:
         testCorpus = CorpusFactory.BERT.createTestCorpus()
     if evaluator == None:
@@ -86,6 +86,8 @@ def main():
         end = time()
         model.logger.info(f"\n\nProcess completed in {(end - start) / 60} min\n")
         model.logger.info(f"Found best evaluation value {results}\n")
+        model.logger.info(f"\n\nProcess completed in {(end - start) / 60} min\n")
+        model.logger.info(f"Found best evaluation value {results}\n")
 
         with open(RESULTS_RECORD_PATH, "w") as file:
             print(results, file = file)
@@ -93,17 +95,20 @@ def main():
     except Exception as exp:
         #model.logger.error(f"Error occured, last best performance score was {Model.bestScore} with parameters {Model.bestParameters}\n")
         model.logger.error(str(exp))
+        #model.logger.error(f"Error occured, last best performance score was {Model.bestScore} with parameters {Model.bestParameters}\n")
+        model.logger.error(str(exp))
         print("Error occured")
+        raise exp
         raise exp
         exit(1)
 
     finally:
-        #saveModel(tuner.model) # saving model upon completion or in case of error
+        #saveModel(model) # saving model upon completion or in case of error
         pass
 
 if __name__ == "__main__":    
     AutoTuner.configLogger(TUNER_LOG_PATH)
-    Model.configLogger(TRAINING_LOG_PATH)
+    #Model.configLogger(TRAINING_LOG_PATH)
 
     main()
     exit(0)
