@@ -11,7 +11,7 @@ from random import sample, seed as randomSeed
 from collections import defaultdict
 from numpy import mean
 
-from src.utils.CacheAdapter import JSONMultiFileAdapter, EXP_END_OF_DATA, createAdapter_02_04_25_GOOD
+from src.utils.CacheAdapter import JSONMultiFileAdapter, EXP_END_OF_DATA, createAdapter_02_04_25_GOOD, EvaluationAdapterFactory
 from src.utils.DatasetManager import ProjectsDatasetManager
 from src.utils.validators import projectDataIsSufficient
 from src.utils.Corpus import CacheCorpus, Factory_21_04_25_HIGH as CorpusFactory
@@ -20,10 +20,10 @@ from skopt.space import Real, Integer
 from src.utils.AutoTuner import AutoTuner, Param
 from src.SBERT_model import SiameseBert as Model
 
-MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/12-05-25_BERT.model"
-RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/12-05-25_evaluatuin.result"
-TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/12-05-25_autotunning.log"
-TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/12-05-25_training.log"
+MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/13-05-25_BERT.model"
+RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/13-05-25_evaluatuin.result"
+TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/13-05-25_bert_autotunning.log"
+TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/13-05-25_bert_training.log"
 
 # creating model
 
@@ -34,7 +34,7 @@ trainCorpus = None
 testCorpus = None
 
 def createModel(**kwargs):
-    global trainCorpus, testCorpus
+    global trainCorpus, testCorpus, evaluator
     model = Model.create(
         epochs = 8,
         batchSize = 16,
@@ -43,7 +43,7 @@ def createModel(**kwargs):
 
     if trainCorpus == None:
         #trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD(50)
-        trainCorpus = CorpusFactory.BERT.createTrainCorpus()
+        trainCorpus = CorpusFactory.BERT.createTrainCorpus(16, max_len = 8)
     if testCorpus == None:
         testCorpus = CorpusFactory.BERT.createTestCorpus()
 
@@ -90,7 +90,7 @@ def main():
         exit(1)
 
     finally:
-        #saveModel(tuner.model) # saving model upon completion or in case of error
+        #saveModel(model) # saving model upon completion or in case of error
         pass
 
 if __name__ == "__main__":    

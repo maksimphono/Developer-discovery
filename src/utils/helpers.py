@@ -1,4 +1,6 @@
 import numpy as np
+from torch import Tensor
+from torch.nn.functional import cosine_similarity as F_cosine_similarity
 from time import time
 from sklearn.metrics.pairwise import cosine_similarity, pairwise_distances
 
@@ -55,16 +57,20 @@ def getTagsQuantitiesForCorpus(corpus):
         return tagsLst
 
 def cosineSimilarity(vec1, vec2):
-    vec1 = np.array(vec1).reshape(1, -1)  # Reshape to (1, n_features)
-    vec2 = np.array(vec2).reshape(1, -1)  # Reshape to (1, n_features)
+    vec1 = vec1.reshape(1, -1)  # Reshape to (1, n_features)
+    vec2 = vec2.reshape(1, -1)  # Reshape to (1, n_features)
 
     # Check if the vectors have the same dimension
     if vec1.shape[1] != vec2.shape[1]:
         raise ValueError("Vectors must have the same dimension.")
 
     # Calculate cosine similarity using scikit-learn
-    similarity_matrix = cosine_similarity(vec1, vec2)
-    return similarity_matrix[0, 0] # Extract the scalar value
+    if isinstance(vec1, Tensor) and isinstance(vec2, Tensor):
+        # if they are tensors
+        return F_cosine_similarity(vec1, vec2).item()
+    else:
+        similarity_matrix = cosine_similarity(vec1, vec2)
+        return similarity_matrix[0, 0] # Extract the scalar value
 
 def eucledianDistance(vec1, vec2):
     vec1 = np.array(vec1)

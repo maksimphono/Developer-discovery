@@ -80,12 +80,12 @@ class SiameseBert(BertPreTrainedModel):
 
     @classmethod
     def load(cls, path, device = DEFAULT_DEVICE):
-        model = SiameseBert('bert-base-uncased')  # Create a new instance of the model
+        model = cls.create()  # Create a new instance of the model
         model.load_state_dict(torch.load(path)) # Load the saved state dictionary
         model.to(device) # Move to the device
         model.eval()
 
-        return loaded_model
+        return model
 
     def __init__(self, config):
         super(SiameseBert, self).__init__(config)
@@ -242,7 +242,7 @@ class SiameseBert(BertPreTrainedModel):
         # print(f"\nTraining is completed in {time() - start}")
 
     def call(self, document):
-        model.eval()
+        self.eval()
         # print(f"model is called with {document['input_ids']}")
         #encoding = tokenizer(text, return_tensors='pt', truncation=True, padding='max_length', max_length=128)  # Or your desired max_length
         input_ids = tensor(document['input_ids']).unsqueeze(0).to(self.dev)
@@ -262,6 +262,7 @@ class SiameseBert(BertPreTrainedModel):
         if self.evaluator != None:
             start = time()
             self.evaluator.setModel(self)
+            self.evaluator.logger = self.logger
             result = self.evaluator.evaluate()
 
         self.logger.info(f"\nEvaluation is completed in {time() - start}; Result = {result}\n")
@@ -271,4 +272,4 @@ class SiameseBert(BertPreTrainedModel):
 
     def save(self, path):
         torch.save(self.state_dict(), path)
-        self.logger(f"Model saved to {path}")
+        self.logger.info(f"Model saved to {path}")
