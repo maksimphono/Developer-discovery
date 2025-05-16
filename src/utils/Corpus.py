@@ -12,7 +12,7 @@ from copy import deepcopy
 
 from gensim.models.doc2vec import TaggedDocument
 
-from src.utils.CacheAdapter import CacheAdapter, JSONAdapter, JSONMultiFileAdapter, EXP_END_OF_DATA, createTrainSetAdapter_02_04_25_GOOD, Factory_21_04_25_HIGH as AdapterFactory_21_04_25
+from src.utils.CacheAdapter import CacheAdapter, FlatAdapter, JSONAdapter, JSONMultiFileAdapter, EXP_END_OF_DATA, createTrainSetAdapter_02_04_25_GOOD, Factory_21_04_25_HIGH as AdapterFactory_21_04_25
 from src.utils.DatasetManager import ProjectsDatasetManager
 from src.utils.validators import projectDataIsSufficient
 from src.utils.helpers import flatternData
@@ -192,11 +192,12 @@ class SBertCorpus(MemoryCorpus):
 
 
 class SBertPairsCorpus(MemoryCorpus):
+    # acts like a corpus, filled with actual pairs or related and unrelated documents
     def __init__(self, adapter = None, relatedPairsAdapter = None, unrelatedPairsAdapter = None, limit = np.inf, includeOnlyID = True, max_len = 128):
         super().__init__(adapter, limit, includeOnlyID)
         self.max_len = max_len
-        self.pairs = tuple([pair for pair in relatedPairsAdapter.load(int(limit / 2))] + [pair for pair in unrelatedPairsAdapter.load(int(np.ceil(limit / 2)))]) # return_tensors='pt'
-        self.data = tuple([BatchEncoding(encoding) for encoding in adapter.load(limit)])
+        self.pairs = tuple([pair for pair in relatedPairsAdapter.load(np.floor(limit / 2))] + [pair for pair in unrelatedPairsAdapter.load(np.ceil(limit / 2))]) # return_tensors='pt'
+        self.data = tuple([BatchEncoding(encoding) for encoding in adapter.load(np.inf)])
         self.len = len(self.data)
         self.workingList = self.pairs
 
@@ -204,7 +205,7 @@ class SBertPairsCorpus(MemoryCorpus):
         return len(self.workingList)
 
     def __getitem__(self, index):
-        # prepares an actual of documents and yields it
+        # prepares an actual pair of documents and yields it
         index1, index2, label = tuple(self.workingList[index].values())
         doc1, doc2 = (self.data[index1], self.data[index2])
 
@@ -280,3 +281,17 @@ class Factory_21_04_25_HIGH:
         def createTestCorpus(cls, limit = np.inf, max_len = 128):
             adapter = AdapterFactory_21_04_25.createTextTestAdapter()
             return SBertCorpus(adapter, limit = limit, max_len = max_len)
+
+        @classmethod
+        def createTrainPairsCorpus(cls, limit = np.inf):
+            adapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/train_tokenized_BERT_21-04-25")
+            relatedAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/train_related_pairs_idx_1538100_21-04-25")
+            unrelatedAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/train_unrelated_pairs_idx_1538100_21-04-25")
+            return SBertPairsCorpus(adapter, relatedPairsAdapter = relatedAdapter, unrelatedPairsAdapter = unrelatedAdapter, limit = limit)
+
+        @classmethod
+        def createTestPairsCorpus(cls, limit = np.inf):
+            adapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/test_tokenized_BERT_21-04-25")
+            relatedAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/test_related_pairs_idx_271436_21-04-25")
+            unrelatedAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/test_unrelated_pairs_idx_271436_21-04-25")
+            return SBertPairsCorpus(adapter, relatedPairsAdapter = relatedAdapter, unrelatedPairsAdapter = unrelatedAdapter, limit = limit)
