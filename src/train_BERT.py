@@ -36,8 +36,8 @@ testCorpus = None
 def createModel(**kwargs):
     global trainCorpus, testCorpus, evaluator
     model = Model.create(
-        epochs = 8,
-        batchSize = 16,
+        epochs = 2,
+        batchSize = 8,
         **kwargs
     )
 
