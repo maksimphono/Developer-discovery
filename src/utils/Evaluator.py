@@ -60,9 +60,9 @@ class Evaluator:
         if self.logger != None: self.logger.info(f"Using Mann-W test on group1 = {group1[:10]}... group0 = {group0[:10]}...")
         u_statistic, p_value = mannwhitneyu(group1, group0, alternative = "less") # , alternative = "less"
 
-        if p_value < 1e-150:
-            p_value = 1
-        return -p_value
+        #if p_value < 1e-150:
+        #    p_value = 1
+        return p_value
 
     def getVector(self, index):
         if index in self.memorizedVectors:

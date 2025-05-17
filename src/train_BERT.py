@@ -22,10 +22,10 @@ from src.utils.AutoTuner import AutoTuner, Param
 from src.SBERT_model import SiameseBert as Model
 from src.utils.helpers import cosineSimilarity as similarity # eucledianDistance as similarity
 
-MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/13-05-25_BERT.model"
-RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/13-05-25_evaluatuin.result"
-TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/13-05-25_autotunning.log"
-TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/13-05-25_training.log"
+MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/17-05-25_BERT.model"
+RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/17-05-25_evaluatuin.result"
+TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/17-05-25_autotunning.log"
+TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/17-05-25_bert_training.log"
 
 # creating model
 
@@ -39,20 +39,18 @@ evaluator = None
 def createModel(**kwargs):
     global trainCorpus, testCorpus, evaluator
     model = Model.create(
-        epochs = 9,
-        batchSize = 16,
+        epochs = 10,
+        batchSize = 64,
         **kwargs
     )
 
     if trainCorpus == None:
         #trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD(50)
-        trainCorpus = CorpusFactory.BERT.createTrainPairsCorpus(16)
+        trainCorpus = CorpusFactory.BERT.createTrainPairsCorpus()
     if testCorpus == None:
-        testCorpus = CorpusFactory.BERT.createTestCorpus()
+        testCorpus = CorpusFactory.BERT.createTestPairsCorpus()
     if evaluator == None:
-        relatedAda, unrelatedAda = EvaluationAdapterFactory.createProjectsEvaluationGroups()
-        evaluator = Evaluator(relatedAda, unrelatedAda, testCorpus)
-        evaluator.setSimilarityCheck(similarity)
+        pass
 
     trainCorpus.reset()
     testCorpus.reset()
@@ -72,6 +70,7 @@ def saveModel(model):
 # autotunning model parameters
 
 def main():
+    global evaluator
     start = time()
     model = createModel()
 
@@ -81,11 +80,17 @@ def main():
         #model.logger.info(f"\nAutotuner object created successfully with parameters: {[p.name for p in parameters]}\n")
         model.logger.info("Starting process of model training...\n")
 
-        results = model.evaluate()
+        results = model.trainMe()
+        model.trainCorpus.clear()
+        model.testCorpus.clear()
+        relatedAda, unrelatedAda = EvaluationAdapterFactory.createProjectsEvaluationGroups()
+        testCorpus = CorpusFactory.BERT.createTestCorpus()
+        evaluator = Evaluator(relatedAda, unrelatedAda, testCorpus)
+        evaluator.setSimilarityCheck(similarity)
+        model.evaluator = evaluator
+        model.evaluate()
 
         end = time()
-        model.logger.info(f"\n\nProcess completed in {(end - start) / 60} min\n")
-        model.logger.info(f"Found best evaluation value {results}\n")
         model.logger.info(f"\n\nProcess completed in {(end - start) / 60} min\n")
         model.logger.info(f"Found best evaluation value {results}\n")
 
@@ -95,15 +100,12 @@ def main():
     except Exception as exp:
         #model.logger.error(f"Error occured, last best performance score was {Model.bestScore} with parameters {Model.bestParameters}\n")
         model.logger.error(str(exp))
-        #model.logger.error(f"Error occured, last best performance score was {Model.bestScore} with parameters {Model.bestParameters}\n")
-        model.logger.error(str(exp))
         print("Error occured")
-        raise exp
         raise exp
         exit(1)
 
     finally:
-        #saveModel(model) # saving model upon completion or in case of error
+        saveModel(model) # saving model upon completion or in case of error
         pass
 
 if __name__ == "__main__":    

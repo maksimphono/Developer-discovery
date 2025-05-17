@@ -16,3 +16,5 @@ for i, batch in enumerate(loader):
     #print(batch["labels"].unsqueeze(1).shape)
 
     if i >= 1: break
+
+testCorp.clear()

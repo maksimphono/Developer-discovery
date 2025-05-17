@@ -80,12 +80,12 @@ class SiameseBert(BertPreTrainedModel):
 
     @classmethod
     def load(cls, path, device = DEFAULT_DEVICE):
-        model = SiameseBert('bert-base-uncased')  # Create a new instance of the model
+        model = cls.create()  # Create a new instance of the model
         model.load_state_dict(torch.load(path)) # Load the saved state dictionary
         model.to(device) # Move to the device
         model.eval()
 
-        return loaded_model
+        return model
 
     def __init__(self, config):
         super(SiameseBert, self).__init__(config)
@@ -102,7 +102,7 @@ class SiameseBert(BertPreTrainedModel):
         #self.fc = nn.Linear(config.hidden_size, 1)
         self.init_weights()
 
-        self.logger.info(f"Bert model initialized with hidden size = {config.hidden_size}")
+        self.logger.info(f"Bert model initialized")
         # print("Bert initialized")
 
     def prepare(self, epochs = 5, batchSize = 16, optimizer = None, device = DEFAULT_DEVICE, evaluator = None):
@@ -178,12 +178,12 @@ class SiameseBert(BertPreTrainedModel):
         for batch in self.trainDataLoader:
             # print("Starting training one batch")
             # input()
-            pairs = createPairsFromBatch(batch)
-            input_ids_1 = pairs['input_ids_1'].to(self.dev)
-            attention_mask_1 = pairs['attention_mask_1'].to(self.dev)
-            input_ids_2 = pairs['input_ids_2'].to(self.dev)
-            attention_mask_2 = pairs['attention_mask_2'].to(self.dev)
-            labels = pairs['labels'].to(self.dev)
+            #pairs = createPairsFromBatch(batch)
+            input_ids_1 = batch['input_ids_1'].to(self.dev)
+            attention_mask_1 = batch['attention_mask_1'].to(self.dev)
+            input_ids_2 = batch['input_ids_2'].to(self.dev)
+            attention_mask_2 = batch['attention_mask_2'].to(self.dev)
+            labels = batch['labels'].to(self.dev).unsqueeze(1)
 
             # print("batch unpacked")
             self.optimizer.zero_grad()
@@ -205,12 +205,12 @@ class SiameseBert(BertPreTrainedModel):
 
         with torch.no_grad():
             for batch in self.testDataLoader:
-                pairs = createPairsFromBatch(batch)
-                input_ids_1 = pairs['input_ids_1'].to(self.dev)
-                attention_mask_1 = pairs['attention_mask_1'].to(self.dev)
-                input_ids_2 = pairs['input_ids_2'].to(self.dev)
-                attention_mask_2 = pairs['attention_mask_2'].to(self.dev)
-                labels = pairs['labels'].to(self.dev)
+                #pairs = createPairsFromBatch(batch)
+                input_ids_1 = batch['input_ids_1'].to(self.dev)
+                attention_mask_1 = batch['attention_mask_1'].to(self.dev)
+                input_ids_2 = batch['input_ids_2'].to(self.dev)
+                attention_mask_2 = batch['attention_mask_2'].to(self.dev)
+                labels = batch['labels'].to(self.dev).unsqueeze(1)
                 # print("batch unpacked")
 
                 outputs = self(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
@@ -242,7 +242,7 @@ class SiameseBert(BertPreTrainedModel):
         # print(f"\nTraining is completed in {time() - start}")
 
     def call(self, document):
-        model.eval()
+        self.eval()
         # print(f"model is called with {document['input_ids']}")
         #encoding = tokenizer(text, return_tensors='pt', truncation=True, padding='max_length', max_length=128)  # Or your desired max_length
         input_ids = tensor(document['input_ids']).unsqueeze(0).to(self.dev)
@@ -252,16 +252,18 @@ class SiameseBert(BertPreTrainedModel):
             output = self.bert(input_ids=input_ids, attention_mask=attention_mask).pooler_output
         return output
 
-    def evaluate(self):
+    def evaluate(self, beforeEvaluation = lambda: None):
         start = 0
         result = 0
-        self.trainMe()
+        self.eval()
 
         self.trainCorpus.reset()
 
         if self.evaluator != None:
+            beforeEvaluation()
             start = time()
             self.evaluator.setModel(self)
+            self.evaluator.logger = self.logger
             result = self.evaluator.evaluate()
 
         self.logger.info(f"\nEvaluation is completed in {time() - start}; Result = {result}\n")
@@ -271,4 +273,4 @@ class SiameseBert(BertPreTrainedModel):
 
     def save(self, path):
         torch.save(self.state_dict(), path)
-        self.logger(f"Model saved to {path}")
+        self.logger.info(f"Model saved to {path}")

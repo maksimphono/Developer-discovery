@@ -132,6 +132,10 @@ class MemoryCorpus(CacheCorpus):
     def reset(self):
         self.position = 0
 
+    def clear(self):
+        del self.data
+        self.data = tuple()
+
     def __iter__(self):
         while self.position < self.len:
             yield self.workingList[self.position]
@@ -219,6 +223,10 @@ class SBertPairsCorpus(MemoryCorpus):
             "labels" : tensor(label, dtype=torch_float)
         }
 
+    def clear(self):
+        super().clear()
+        del self.pairs
+        self.pairs = tuple()
 
 from src.utils.CacheAdapter import createTestSetAdapter_02_04_25_GOOD, createTrainSetAdapter_02_04_25_GOOD, createTrainSetDBadepter_02_04_25_GOOD, createTestSetDBadepter_02_04_25_GOOD
 
