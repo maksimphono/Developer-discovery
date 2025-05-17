@@ -18,6 +18,7 @@ from src.utils.Corpus import Corpus
 from src.utils.helpers import normalize
 
 import gensim
+from gensim.models.doc2vec import Doc2Vec
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics import precision_score, recall_score, f1_score
 from annoy import AnnoyIndex
@@ -236,10 +237,21 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         return result
 
     def save(self, fname, *args, **kwargs):
-        super().save(fname, *args, **kwargs)
-        # Save custom attributes in a separate file
-        with open(fname + ".custom_data", 'w') as f:
-            for name, attr in self.__getstate__().items():
-                print(f"{name} {attr}", file = f)
+        model = Doc2Vec(
+            vector_size = self.vector_size, # 230
+            window = self.window,
+            min_count = self.min_count, # 15
+            epochs = self.epochs, # 55
+            negative = self.negative, # 20
+            sample = self.sample
+        )
+
+        attrs = tuple(model.__dict__.keys())
+        for attr in attrs:
+            value = self.__getattribute__(attr)
+            model.__setattr__(attr, value)
+
+        model.syn1neg = self.syn1neg
+        model.save(fname)
 
         self.logger.info(f"Model saved into {fname}")

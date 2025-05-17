@@ -113,7 +113,6 @@ class UsersEvaluator(Evaluator):
         else:
             doc = self.tokenizer([*project.values()][0])
             vector = self.model.call(doc)
-            vector = self.model.call(doc)
             self.memorizedVectors[proj_id] = vector
             return vector
 
