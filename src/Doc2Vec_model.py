@@ -240,10 +240,10 @@ class Model(gensim.models.doc2vec.Doc2Vec):
 
         attrs = tuple(model.__dict__.keys())
         for attr in attrs:
-            value = model.__getattribute__(attr)
+            value = self.__getattribute__(attr)
             model.__setattr__(attr, value)
 
-        model.syn1neg = model.syn1neg
-        model.save(path)
+        model.syn1neg = self.syn1neg
+        model.save(fname)
 
         self.logger.info(f"Model saved into {fname}")
