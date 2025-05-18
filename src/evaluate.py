@@ -23,7 +23,7 @@ from src.utils.AutoTuner import AutoTuner, Param
 from src.Doc2Vec_model import Model
 from gensim.models import Doc2Vec
 
-MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/09-05-25_Doc2Vec.model"
+MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/10-05-25_Doc2Vec.model"
 RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/10-05-25_evaluatuin.result"
 TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/10-05-25_autotunning.log"
 TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/10-05-25_training.log"
@@ -43,7 +43,7 @@ def createModel(**kwargs):
                 dm_dbow_mode = "DBOW", 
                 alpha_init = ALPHA_INIT,
                 alpha_final = ALPHA_FINAL,
-                workers = 16,
+                workers = 4,
                 **kwargs
             )
 
@@ -77,13 +77,13 @@ def saveModel(model):
 def main():
     start = time()
 
-    model = createModel(
-        vector_size = 230,
-        window = 5,
-        min_count = 15,
-        epochs = 55,
-        negative = 20,
-        sample = 1e-05,
+    model = createModel( # 159, 8, 14, 41, 13, 0.0008229870821300202
+        vector_size = 159,
+        window = 8,
+        min_count = 14,
+        epochs = 41,
+        negative = 13,
+        sample = 0.0008229870821300202,
     )
 
     try:
@@ -105,7 +105,7 @@ def main():
         exit(1)
 
     finally:
-        #saveModel(tuner.model) # saving model upon completion or in case of error
+        saveModel(model) # saving model upon completion or in case of error
         pass
 
 def completeProcess(*args):
