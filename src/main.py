@@ -12,21 +12,22 @@ from collections import defaultdict
 from numpy import mean
 
 from src.utils.CacheAdapter import JSONMultiFileAdapter, EXP_END_OF_DATA, createAdapter_02_04_25_GOOD, EvaluationAdapterFactory
-from src.utils.DatasetManager import ProjectsDatasetManager
+from src.utils.DatasetManager import ProjectsDatasetManager, NewDatasetManager
 from src.utils.validators import projectDataIsSufficient
 from src.utils.Corpus import CacheCorpus, Factory_21_04_25_HIGH as CorpusFactory
-from src.utils.Evaluator import Evaluator
-from src.utils.helpers import cosineSimilarity as similarity
+from src.utils.Evaluator import Evaluator, UsersEvaluator
+from src.utils.helpers import eucledianDistance as similarity #cosineSimilarity as similarity
 
 from skopt.space import Real, Integer
 from src.utils.AutoTuner import AutoTuner, Param
 from src.Doc2Vec_model import Model
 from gensim.models import Doc2Vec
+from gensim.models.doc2vec import TaggedDocument
 
-MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/10-05-25_Doc2Vec.model"
-RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/10-05-25_evaluatuin.result"
-EVAL_LOG_PATH = "/home/trukhinmaksim/src/logs/10-05-25_evaluation.log"
-TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/10-05-25_training.log"
+MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/18-05-25_Doc2Vec_neg_euclidian.model"
+RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/19-05-25_evaluatuin.result"
+TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/19-05-25_autotunning.log"
+TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/19-05-25_training.log"
 
 # creating model
 
@@ -37,11 +38,19 @@ trainCorpus = None
 testCorpus = None
 evaluator = None
 
-def prepareCorpus():
+def createModel(**kwargs):
     global trainCorpus, testCorpus, evaluator
+    model = Model(
+                dm_dbow_mode = "DBOW", 
+                alpha_init = ALPHA_INIT,
+                alpha_final = ALPHA_FINAL,
+                workers = 64,
+                **kwargs
+            )
+
     if trainCorpus == None:
         #trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD(50)
-        trainCorpus = CorpusFactory.createFlatTrainCorpus(2)
+        trainCorpus = CorpusFactory.createFlatTrainCorpus()
     if testCorpus == None:
         testCorpus = CorpusFactory.createFlatTestCorpus()
     if evaluator == None:
@@ -51,19 +60,6 @@ def prepareCorpus():
 
     trainCorpus.reset()
     testCorpus.reset()
-
-def createModel(**kwargs):
-    global trainCorpus, testCorpus, evaluator
-    model = Model(
-                dm_dbow_mode = "DBOW", 
-                alpha_init = ALPHA_INIT,
-                alpha_final = ALPHA_FINAL,
-                workers = 4,
-                **kwargs
-            )
-
-    prepareCorpus()
-
     model.trainCorpus = trainCorpus
     model.testCorpus = testCorpus
     model.evaluator = evaluator
@@ -83,23 +79,29 @@ class M:
     def __init__(self, model):
         self.model = model
     def call(self, doc):
-        return np.array(self.model.infer_vector(doc.words))
+        return self.model.infer_vector(doc.words)
+
 
 def main():
     start = time()
 
-    prepareCorpus()
+    model = M(Doc2Vec.load(MODEL_SAVING_PATH))
 
-    model = M(Doc2Vec.load("/home/trukhinmaksim/src/src/models/10-05-25_Doc2Vec.model"))
+    manager = NewDatasetManager(0, inputAdapter = None)
+    d2vTokenizer = lambda text: TaggedDocument(words = manager.textPreprocessing(text, False), tags = [0])
+    meanAggregator = lambda vectors: mean(np.array(vectors), axis = 0)
+
+    evaluator = UsersEvaluator(aggregate = meanAggregator, tokenizer = d2vTokenizer)
+    evaluator.setSimilarityCheck(similarity)
+    model.evaluator = evaluator
 
     try:
         # danger zone! Progress must be saved if error occure
         print("Welcome!")
-        evaluator.setModel(model)
-        print(f"\nReady to evaluate model, evaluator = {repr(evaluator)}")
-        results = evaluator.evaluate()
-
         #results = model.evaluate() # {'vector_size': 230, 'window': 5, 'min_count': 15, 'epochs': 55, 'negative': 20, 'sample': 1e-05}
+        print(f"\nReady to evaluate model on users data, evaluator = {repr(evaluator)}")
+        evaluator.setModel(model)
+        results = evaluator.evaluate()
 
         end = time()
         print(f"\n\nProcess completed in {(end - start) / 60} min\n")
@@ -112,6 +114,7 @@ def main():
         print(f"Error occured, last best performance score was {Model.bestScore} with parameters {Model.bestParameters}\n")
         print(str(exp))
         print("Error occured")
+        raise exp
         exit(1)
 
     finally:
@@ -123,8 +126,8 @@ def completeProcess(*args):
     exit(0)
 
 if __name__ == "__main__":    
-    #AutoTuner.configLogger(EVAL_LOG_PATH)
-    Model.configLogger(EVAL_LOG_PATH)
+    #AutoTuner.configLogger(TUNER_LOG_PATH)
+    #Model.configLogger(TRAINING_LOG_PATH)
 
     main()
     completeProcess()

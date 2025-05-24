@@ -82,4 +82,4 @@ def eucledianDistance(vec1, vec2):
         raise ValueError("Vectors must have the same dimension.")
 
     similarity_matrix = pairwise_distances([vec1, vec2])
-    return similarity_matrix[0, 1] # Extract the scalar value
+    return -similarity_matrix[0, 1] # Extract the scalar value

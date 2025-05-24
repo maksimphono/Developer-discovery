@@ -24,6 +24,7 @@ import asyncio
 import nest_asyncio
 from googletrans import Translator
 import traceback
+import fasttext
 import logging
 
 from src.utils.CacheAdapter import JSONAdapter, CacheAdapter, EXP_END_OF_DATA
@@ -38,6 +39,21 @@ def downloadArgosLangPackages(langList = ["es", "pt", "zh", "zt", "ru", "de", "j
     for pkg in packages:
         argostranslate.package.install_from_path(pkg.download())
 
+try:
+    fastTextModel = fasttext.load_model('/home/trukhinmaksim/lid.176.bin')
+except ValueError as e:
+    print(f"Error loading model: {e}")
+    print("Please ensure 'lid.176.bin' is in the current directory or provide the full path.")
+    print("You can download it from: https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin")
+    exit()
+
+def detectLang(text):
+    global fastTextModel
+    predictions = fastTextModel.predict(text)
+    languageLabel = predictions[0][0]
+    languageCode = languageLabel.replace('__label__', '')
+
+    return languageCode
 
 class IgnoreList(dict):
     def includes(self, item):
@@ -398,10 +414,11 @@ class NewDatasetManager(DatasetManager):
         self.processedProjsIds = []
         self.processedProjectsNum = 0
 
-    def translateText(self, text, retry = 3, useServer = False):
+    def translateText(self, text, retry = 3, useServer = False, precheck = True):
         # will try to use Google Translate, but if any error occures, will use Argos offline translator
         try:
-            if text.isascii() or detect(text) == "en": return text # if the text is already english (either ascii or english with unicode emoji)
+            if precheck and (text.isascii() or detectLang(text) == "en"): 
+                return text # if the text is already english (either ascii or english with unicode emoji)
         except LangDetectException:
             pass
 
@@ -444,9 +461,10 @@ class NewDatasetManager(DatasetManager):
         #print(f"Translation Faled after {retry} attempts, Using Argos for {text[:10]}...\nLanguage detected as: {langCode}")
         #return argostranslate.translate.translate(text, langCode, "en")
 
-    def textPreprocessing(self, text):
+    def textPreprocessing(self, text, translate = True):
         # Translate:
-        text = self.translateText(text, 3, False)
+        if translate: 
+            text = self.translateText(text, 3, False)
         # Remove unicode:
         text = text.encode("ascii", "ignore").decode()
         # Process camel case:
@@ -590,3 +608,56 @@ class RawTextDatasetManager(NewDatasetManager):
                     continue
                 else:
                     self.interruptGracefully(f"Falied to fix error :(\nError occured while scanning {project['tags'][0]}")
+
+
+class ReadmeFilesTranslatonManager(NewDatasetManager):
+    def __init__(self, *args, **kwargs):
+        self.mapper = self.preprocess
+        self.maxLength = 4000 # < 5000 for Google translator
+
+    def removeLinks(self, text):
+        pattern = re.compile(
+            r'\b(?:https?://|www\.)\S+\b',
+            re.IGNORECASE  # Ensures matching regardless of case for http/https/www
+        )
+        return pattern.sub('', text)
+
+    def removeMarkdown(self, mardown):
+        html = markdown.markdown(markdown)
+
+        soup = BeautifulSoup(html, "html.parser")
+
+        # remove code blocks and other elements
+        for pre in soup.find_all('pre'):
+            pre.extract()
+        # remove <code> tags
+        for code in soup.find_all('code'):
+            code.extract()
+
+        text = soup.get_text()
+
+        text = self.removeLinks(text)
+
+        # normalize whitespace
+        text = '\n'.join(line.strip() for line in text.splitlines() if line.strip())
+        return text
+
+    def truncate(self, text):
+        length = len(text)
+
+        while length > self.maxLength:
+            length = text.rfind("\n", 0, length)
+
+        if length <= 5:
+            return text[0:self.maxLength] # just cut off the rest of content
+        return text[0:length]
+
+    def preprocess(self, obj):
+        newObj = dict(obj)
+        readme = self.removeMarkdown(obj["readme"])
+        readme = self.truncate(readme)
+
+        obj["readme"] = self.translateText(readme)
+
+        return obj
+

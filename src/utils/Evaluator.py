@@ -10,7 +10,7 @@ from numpy import mean
 from copy import deepcopy
 from scipy.stats import mannwhitneyu
 
-from src.utils.CacheAdapter import Factory_21_04_25_HIGH as CacheFactory
+from src.utils.CacheAdapter import Factory_21_04_25_HIGH as CacheFactory, EXP_END_OF_DATA
 from src.utils.CacheAdapter import EvaluationAdapterFactory
 
 
@@ -88,7 +88,7 @@ class Evaluator:
 
 class UsersEvaluator(Evaluator):
     def __init__(self, aggregate = np.mean, tokenizer = lambda s: s.split()):
-        group1, group0 = CacheFactory.createProjectsEvaluationGroups()
+        group1, group0 = EvaluationAdapterFactory.createUsersEvaluationGroups()
         super().__init__(group1, group0, None, limit = 2200)
 
         self.aggregate = aggregate
@@ -101,7 +101,7 @@ class UsersEvaluator(Evaluator):
                 vectors.append(self.memorizedVectors[proj_id])
             else:
                 doc = self.tokenizer(text)
-                vectors.append(self.model(doc))
+                vectors.append(self.model.call(doc))
                 self.memorizedVectors[proj_id] = vectors[-1]
         
         return self.aggregate(np.array(vectors))
@@ -119,10 +119,10 @@ class UsersEvaluator(Evaluator):
     def getVector(self, obj):
         if "id" in obj:
             # argument is a user
-            return getUserVector(obj)
+            return self.getUserVector(obj)
         else:
             # argument is a project
-            return getProjectVector(obj)
+            return self.getProjectVector(obj)
 
 
 class Factory:

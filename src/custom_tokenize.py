@@ -11,14 +11,14 @@ from src.utils.DatasetManager import DatasetManager, NewDatasetManager
 from src.utils.CacheAdapter import CacheAdapter, EXP_END_OF_DATA, FlatAdapter, Factory_21_04_25_HIGH as CacheFactory
 from src.utils.validators import projectDataIsHighQuality
 
-from transformers import BertTokenizer
+from transformers import BertTokenizer, RobertaTokenizer
 from transformers.tokenization_utils_base import BatchEncoding
 
 
 TOKENIZED_SAVE_PATH = "/home/trukhinmaksim/src/data/cache_21-04-25"
 MAX_LEN = 128
 
-tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
 
 def tokenize(doc):
     encoding = tokenizer(doc["text"], truncation=True, padding='max_length', max_length=MAX_LEN)
@@ -27,11 +27,11 @@ def tokenize(doc):
     return dict(encoding)
 
 def main():
-    textAdapter = CacheFactory.createTextTestAdapter()
-    tokenizedAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/test_tokenized_BERT_21-04-25")
+    textAdapter = CacheFactory.createTextTrainAdapter()
+    tokenizedAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/train_tokenized_RoBERTa_21-04-25")
 
     manager = DatasetManager(
-        5000,
+        1000,
         inputAdapter = textAdapter,
         outputAdapters = [tokenizedAdapter],
         mapper = tokenize
@@ -42,7 +42,7 @@ def main():
         try:
             manager()
             print(f"Tokeinzed {i} documents")
-            i += 5000
+            i += 1000
         except EXP_END_OF_DATA:
             break
 
@@ -53,7 +53,7 @@ def main():
         return None
 
     manager = DatasetManager(
-        10000,
+        1000,
         inputAdapter = tokenizedAdapter,
         outputAdapters = [],
         mapper = count
