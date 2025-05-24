@@ -10,16 +10,15 @@ import string
 from copy import deepcopy
 import re
 from collections import defaultdict
-import argostranslate.package
-import argostranslate.translate
+#import argostranslate.package
+#import argostranslate.translate
 from random import random
 from time import sleep
-from langdetect import detect
-from langdetect.lang_detect_exception import LangDetectException
+#from langdetect import detect
+#from langdetect.lang_detect_exception import LangDetectException
 import requests
 from json import dumps
 from random import choice
-import textstat
 import asyncio
 import nest_asyncio
 from googletrans import Translator
@@ -30,8 +29,8 @@ import markdown
 from bs4 import BeautifulSoup
 
 from src.utils.CacheAdapter import JSONAdapter, CacheAdapter, EXP_END_OF_DATA
-from src.data_processing.collect_projects_data import collectOneProjectData, EXP_NOT_IN_DB
-from src.utils.DatabaseConnect import DatabaseConnector
+#from src.data_processing.collect_projects_data import collectOneProjectData, EXP_NOT_IN_DB
+#from src.utils.DatabaseConnect import DatabaseConnector
 
 def downloadArgosLangPackages(langList = ["es", "pt", "zh", "zt", "ru", "de", "ja", "ko"]):
     argostranslate.package.update_package_index()
@@ -236,11 +235,12 @@ class ProjectsDatasetManager:
         langCode = detect(text)[:2]
         if langCode not in ["es", "pt", "zh", "zt", "ru", "de", "ja", "ko"]: langCode = "zh" # If language is unknown, assuming it is Chinese
         print(f"Translation Faled after {retry} attempts, Using Argos for {text[:10]}...\nLanguage detected as: {langCode}")
-        return argostranslate.translate.translate(text, langCode, "en")
+        return text#argostranslate.translate.translate(text, langCode, "en")
 
 
     def checkTextReadability(self, text):
-        return (textstat.flesch_reading_ease(text) >= self.readability["flesch"] and textstat.dale_chall_readability_score(text) >= self.readability["dale_chall"])
+        return None
+        #return (textstat.flesch_reading_ease(text) >= self.readability["flesch"] and textstat.dale_chall_readability_score(text) >= self.readability["dale_chall"])
 
     def textPreprocessing(self, text):
         # Translate:
@@ -419,11 +419,8 @@ class NewDatasetManager(DatasetManager):
 
     def translateText(self, text, retry = 3, useServer = False, precheck = True):
         # will try to use Google Translate, but if any error occures, will use Argos offline translator
-        try:
-            if precheck and (text.isascii() or detectLang(text.replace("\n", "")) == "en"): 
-                return text # if the text is already english (either ascii or english with unicode emoji)
-        except LangDetectException:
-            pass
+        if precheck and (text.isascii() or detectLang(text.replace("\n", "")) == "en"): 
+            return text # if the text is already english (either ascii or english with unicode emoji)
 
         if useServer:
             translatorURL = choice(NewDatasetManager.translatorServers)
@@ -614,11 +611,17 @@ class RawTextDatasetManager(NewDatasetManager):
 
 
 class ReadmeFilesTranslatonManager(NewDatasetManager):
-    def __init__(self, maxLength = 4000, *args, **kwargs):
+    def __init__(self, maxLength = 4000, skip = 0, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.mapper = self.preprocess
         self.maxLength = maxLength # < 5000 for Google translator
         self.counter = 0
+        while skip > 50000:
+            self.inputAdapter.load(50000)
+            skip -= 50000
+
+        self.inputAdapter.load(skip)
+
 
     def removeLinks(self, text):
         pattern = re.compile(
@@ -702,6 +705,7 @@ class ReadmeFilesTranslatonManager(NewDatasetManager):
 
         while 1:
             result = await self.runAsync()
+            sleep(3 * random())
             if result == EXP_END_OF_DATA:
                 break
 

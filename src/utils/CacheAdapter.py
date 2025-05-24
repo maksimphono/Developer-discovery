@@ -3,7 +3,7 @@ import json
 from itertools import islice
 import logging
 
-from src.utils.DatabaseConnect import CacheConnector, CacheConnector_02_04_25
+#from src.utils.DatabaseConnect import CacheConnector, CacheConnector_02_04_25
 
 PREPROCESSED_DATA_CACHE_PATH = "/home/trukhinmaksim/src/data/train_02-04-25"
 
