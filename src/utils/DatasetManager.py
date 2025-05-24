@@ -26,6 +26,8 @@ from googletrans import Translator
 import traceback
 import fasttext
 import logging
+import markdown
+from bs4 import BeautifulSoup
 
 from src.utils.CacheAdapter import JSONAdapter, CacheAdapter, EXP_END_OF_DATA
 from src.data_processing.collect_projects_data import collectOneProjectData, EXP_NOT_IN_DB
@@ -374,7 +376,8 @@ class DatasetManager:
             else:
                 self.data += data
 
-        self.readCounter += len(data)
+        self.readCounter += len(self.data)
+        print(f"Counter: {self.readCounter}")
         return self.data
 
     def writeOutput(self):
@@ -417,7 +420,7 @@ class NewDatasetManager(DatasetManager):
     def translateText(self, text, retry = 3, useServer = False, precheck = True):
         # will try to use Google Translate, but if any error occures, will use Argos offline translator
         try:
-            if precheck and (text.isascii() or detectLang(text) == "en"): 
+            if precheck and (text.isascii() or detectLang(text.replace("\n", "")) == "en"): 
                 return text # if the text is already english (either ascii or english with unicode emoji)
         except LangDetectException:
             pass
@@ -611,9 +614,11 @@ class RawTextDatasetManager(NewDatasetManager):
 
 
 class ReadmeFilesTranslatonManager(NewDatasetManager):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, maxLength = 4000, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.mapper = self.preprocess
-        self.maxLength = 10 # < 5000 for Google translator
+        self.maxLength = maxLength # < 5000 for Google translator
+        self.counter = 0
 
     def removeLinks(self, text):
         pattern = re.compile(
@@ -622,8 +627,8 @@ class ReadmeFilesTranslatonManager(NewDatasetManager):
         )
         return pattern.sub('', text)
 
-    def removeMarkdown(self, mardown):
-        html = markdown.markdown(markdown)
+    def removeMarkdown(self, rawMarkdown):
+        html = markdown.markdown(rawMarkdown)
 
         soup = BeautifulSoup(html, "html.parser")
 
@@ -668,10 +673,14 @@ class ReadmeFilesTranslatonManager(NewDatasetManager):
         return newObj
 
     async def runAsync(self):
+        if self.readCounter >= self.limit: return EXP_END_OF_DATA
         try:
             self.readInput()
         except EXP_END_OF_DATA:
             return EXP_END_OF_DATA
+
+        if self.readCounter > self.limit:
+            self.data = self.data[0:-(self.readCounter - self.limit)]
 
         loop = asyncio.get_running_loop()
 
