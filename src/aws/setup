@@ -1,0 +1,15 @@
+sudo apt update
+
+sudo mkdir /home/ubuntu/src
+sudo mkdir /home/ubuntu/src/data
+sudo mkdir /home/ubuntu/src/data/cache_30-04-25
+
+sudo install docker
+
+cd /home/ubuntu/src
+
+git clone https://github.com/maksimphono/Developer-discovery.git ./
+
+sudo docker build -t readme_image -f ./Dockerfile_readme .
+
+sudo docker run -dit --hostname=b55450836a31 --name=readme_container  --user=root  --env=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin  --env=DEBIAN_FRONTEND=noninteractive  --env=SHELL=/bin/bash  --env=NB_USER=trukhinmaksim  --env=NB_UID=1000  --env=NB_GID=100  --env=LC_ALL=en_US.UTF-8  --env=LANG=en_US.UTF-8  --env=LANGUAGE=en_US.UTF-8  --env=HOME=/home/trukhinmaksim  --env=JUPYTER_PORT=8888 --volume=/home/ubuntu:/home/trukhinmaksim  --network=host  --workdir=/home/trukhinmaksim -p 8888:8888 -p 8000:8000 --restart=no  --runtime=runc -d readme_image:latest

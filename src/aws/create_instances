@@ -1,0 +1,23 @@
+AMI_ID="ami-0d5bb3742db8fc264"
+SECURITY_GROUP_ID="sg-05b7a995a79749d5e"
+KEY_PAIR_NAME="seoul_keypair"
+
+
+INSTANCE_COUNT=10
+DISK_SIZE_GB=16 # Desired disk space
+
+aws ec2 run-instances \
+  --image-id "$AMI_ID" \
+  --instance-type t2.micro \
+  --count "$INSTANCE_COUNT" \
+  --key-name "$KEY_PAIR_NAME" \
+  --security-group-ids "$SECURITY_GROUP_ID" \
+  --block-device-mappings "DeviceName=/dev/xvda,Ebs={VolumeSize=$DISK_SIZE_GB,VolumeType=gp2}" \
+  --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value="Translator"}]' \
+  --associate-public-ip-address \
+  --output json
+
+aws ec2 describe-instances \
+  --filters "Name=tag:Name,Values=Translator" "Name=instance-state-name,Values=running" \
+  --query "Reservations[].Instances[].PublicIpAddress" \
+  --output text > instance_ips.txt

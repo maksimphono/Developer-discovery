@@ -1,0 +1,13 @@
+INSTANCE_IDS=$(aws ec2 describe-instances \
+  --filters "Name=tag:Name,Values=Translator" "Name=instance-state-name,Values=running" \
+  --query "Reservations[].Instances[].InstanceId" \
+  --output text)
+
+# Check if any instances were found
+if [ -z "$INSTANCE_IDS" ]; then
+  echo "No running instances found with the tag 'MyBatchInstance'."
+else
+  echo "Stopping instances: $INSTANCE_IDS"
+  # Stop the identified instances
+  aws ec2 stop-instances --instance-ids $INSTANCE_IDS
+fi
