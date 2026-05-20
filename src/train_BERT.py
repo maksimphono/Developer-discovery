@@ -19,13 +19,13 @@ from src.utils.Evaluator import Evaluator
 
 from skopt.space import Real, Integer
 from src.utils.AutoTuner import AutoTuner, Param
-from src.SBERT_model import SiameseBert as Model
+from src.SBERT_model import SiameseBert as Model #SiameseRoBerta as Model#
 from src.utils.helpers import cosineSimilarity as similarity # eucledianDistance as similarity
 
-MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/17-05-25_BERT.model"
-RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/17-05-25_evaluatuin.result"
-TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/17-05-25_autotunning.log"
-TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/17-05-25_bert_training.log"
+MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/28-05-25_BERT.model"
+RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/28-05-25_evaluation.result"
+TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/28-05-25_autotunning.log"
+TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/28-05-25_bert_training.log"
 
 # creating model
 
@@ -39,16 +39,16 @@ evaluator = None
 def createModel(**kwargs):
     global trainCorpus, testCorpus, evaluator
     model = Model.create(
-        epochs = 10,
-        batchSize = 64,
+        epochs = 8,
+        batchSize = 32,
         **kwargs
     )
 
     if trainCorpus == None:
         #trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD(50)
-        trainCorpus = CorpusFactory.BERT.createTrainPairsCorpus()
+        trainCorpus = CorpusFactory.BERT.createTrainPairsCorpus(1538100)
     if testCorpus == None:
-        testCorpus = CorpusFactory.BERT.createTestPairsCorpus()
+        testCorpus = CorpusFactory.BERT.createTestPairsCorpus(271436)
     if evaluator == None:
         pass
 
@@ -57,6 +57,8 @@ def createModel(**kwargs):
     model.setTrainCorpus(trainCorpus)
     model.setTestCorpus(testCorpus)
     model.evaluator = evaluator
+    
+    print(f"Length of loaded train pairs corpus = {len(trainCorpus)}")
 
     return model
 
@@ -88,7 +90,8 @@ def main():
         evaluator = Evaluator(relatedAda, unrelatedAda, testCorpus)
         evaluator.setSimilarityCheck(similarity)
         model.evaluator = evaluator
-        model.evaluate()
+        print(f"Starting evaluation process with evaluator = {evaluator}; test corp len = {len(testCorpus.workingList)}; pairs = {len(evaluator.relatedPairs)}")
+        results = model.evaluate()
 
         end = time()
         model.logger.info(f"\n\nProcess completed in {(end - start) / 60} min\n")
@@ -109,8 +112,8 @@ def main():
         pass
 
 if __name__ == "__main__":    
-    AutoTuner.configLogger(TUNER_LOG_PATH)
-    #Model.configLogger(TRAINING_LOG_PATH)
+    #AutoTuner.configLogger(TUNER_LOG_PATH)
+    Model.configLogger(TRAINING_LOG_PATH)
 
     main()
     exit(0)

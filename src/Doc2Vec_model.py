@@ -84,8 +84,10 @@ class Model(gensim.models.doc2vec.Doc2Vec):
 
         return logging.getLogger("gensim.models.doc2vec")
 
-    def __init__(self, dm_dbow_mode = "DM", pretrain_w2v = False, alpha_init = 0.05, alpha_final = 0.001, evaluator = None, *args, **kwargs):
-        super().__init__(dm = (1 if dm_dbow_mode == "DM" else 0), *args, **kwargs)
+    def __init__(self, dm_dbow_mode = "DM", pretrain_w2v = False, alpha_init = 0.05, alpha_final = 0.001, evaluator = None, seed = 88, *args, **kwargs):
+        randomSeed(seed)
+        np.random.seed(seed)
+        super().__init__(dm = (1 if dm_dbow_mode == "DM" else 0), seed = seed, *args, **kwargs)
         self.trainCorpus = None # corpus is an iterator(iterable class object), that will be used in "train" method of Doc2Vec model for data extraction
         self.testCorpus = None # corpuses should be static structures, that are not changing in process of evaluation
         self.alphaInit = alpha_init
@@ -200,9 +202,11 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         else:
             return result
 
-    def call(self, document):
+    def call(self, document, seed = 88):
         # method, that will be used to get vector representation of the document (in this case TaggedDocument)
-        return self.infer_vector(document.words)
+        randomSeed(seed)
+        np.random.seed(seed)
+        return self.infer_vector(document.words, epochs = 45, alpha = self.alphaInit, min_alpha = self.alphaFinal)
 
     def evaluate(self): # this method is used be autotuner
         # will train the model on upon-selected set of parameters and test it's performance
@@ -233,6 +237,8 @@ class Model(gensim.models.doc2vec.Doc2Vec):
                 "sample" : self.sample,
                 "window" : self.window
             }
+        #if result >= -0.4:
+        #    self.save(f"/home/trukhinmaksim/src/src/models/27-05-25_Doc2Vec_dbow_cos_({str(result)[3:]}).model")
 
         return result
 
