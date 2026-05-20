@@ -4,4 +4,4 @@
 
 ## Links:
 
-* [https://maksimphono.github.io/Developer-discovery](Documentation)
+* [Documentation](https://maksimphono.github.io/Developer-discovery)
