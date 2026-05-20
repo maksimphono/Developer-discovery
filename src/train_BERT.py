@@ -45,7 +45,6 @@ def createModel(**kwargs):
     )
 
     if trainCorpus == None:
-        #trainCorpus = CorpusFactory.createFlatTrainCorpus_02_04_25_GOOD(50)
         trainCorpus = CorpusFactory.BERT.createTrainPairsCorpus(1538100)
     if testCorpus == None:
         testCorpus = CorpusFactory.BERT.createTestPairsCorpus(271436)
@@ -63,8 +62,6 @@ def createModel(**kwargs):
     return model
 
 def saveModel(model):
-    #cTr = model.trainCorpus
-    #cTs = model.testCorpus
     model.trainCorpus = None
     model.testCorpus = None
     model.save(MODEL_SAVING_PATH)
@@ -112,7 +109,6 @@ def main():
         pass
 
 if __name__ == "__main__":    
-    #AutoTuner.configLogger(TUNER_LOG_PATH)
     Model.configLogger(TRAINING_LOG_PATH)
 
     main()

@@ -46,11 +46,6 @@ def prepareCorpus(model = None):
     if testCorpus == None:
         testCorpus = CorpusFactory.createFlatTestCorpus()
     if evaluator == None:
-        """
-        relatedAda, unrelatedAda = EvaluationAdapterFactory.createProjectsEvaluationGroups()
-        evaluator = Evaluator(relatedAda, unrelatedAda, testCorpus)
-        evaluator.setSimilarityCheck(similarity)
-        """
         evaluator = EvaluatorFactory.createDoc2VecEvaluator(
             similarity=similarity, 
             corpus=testCorpus, 

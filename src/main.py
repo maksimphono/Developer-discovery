@@ -69,23 +69,7 @@ def main():
     
     model = Model.load(MODEL_SAVING_PATH)
     model.eval()
-    #prepareCorpus(model)
-    #manager = NewDatasetManager(0, inputAdapter = None)
-    #d2vTokenizer = lambda text: TaggedDocument(words = manager.textPreprocessing(text, False), tags = [0])
-    
-    #meanAggregator = lambda vectors: t_mean(tensor(vectors, dtype=t_float32, device=model.dev), dim = 0)
-    """
-    relatedAda, unrelatedAda = EvaluationAdapterFactory.createProjectsEvaluationGroups()
-    testCorpus = CorpusFactory.BERT.createTestCorpus()
-    model.trainCorpus = testCorpus
-    model.testCorpus = testCorpus
-    evaluator = Evaluator(relatedAda, unrelatedAda, testCorpus)
-    evaluator.setSimilarityCheck(similarity)
-    model.evaluator = evaluator
-    print(f"Starting evaluation process with evaluator = {evaluator}; test corp len = {len(testCorpus.workingList)}; pairs = {len(evaluator.relatedPairs)}")
-    results = model.evaluate()
-    print(results)
-    """
+
     testCorpus = CorpusFactory.BERT.createTestCorpus(2)
     model.trainCorpus = testCorpus
     model.testCorpus = testCorpus
@@ -106,8 +90,6 @@ def main():
         print(f"\nReady to evaluate model on users data, evaluator = {repr(evaluator)}")
         evaluator.setModel(model)
         results = evaluator.evaluate()
-        #v = evaluator.getPlotVectors()
-        #print(v.shape)
 
         end = time()
         print(f"\n\nProcess completed in {(end - start) / 60} min\n")
@@ -124,15 +106,14 @@ def main():
         exit(1)
 
     finally:
-        #saveModel(model) # saving model upon completion or in case of error
-        pass
+        saveModel(model) # saving model upon completion or in case of error
+
 
 def completeProcess(*args):
     # perform custom action upon completion
     exit(0)
 
 if __name__ == "__main__":    
-    #AutoTuner.configLogger(TUNER_LOG_PATH)
     #Model.configLogger(TRAINING_LOG_PATH)
 
     main()

@@ -43,35 +43,11 @@ def prepareCorpus(model = None):
     if testCorpus == None:
         testCorpus = CorpusFactory.createFlatTestCorpus()
     if evaluator == None:
-        """
-        relatedAda, unrelatedAda = EvaluationAdapterFactory.createProjectsEvaluationGroups()
-        evaluator = Evaluator(relatedAda, unrelatedAda, testCorpus)
-        evaluator.setSimilarityCheck(similarity)
-        """
         evaluator = EvaluatorFactory.createDoc2VecEvaluator(
             similarity=similarity, 
             corpus=testCorpus, 
             model=model
         )
-
-def createModel(**kwargs):
-    global trainCorpus, testCorpus, evaluator
-    model = Model(
-                dm_dbow_mode = "DBOW", 
-                alpha_init = ALPHA_INIT,
-                alpha_final = ALPHA_FINAL,
-                **kwargs
-            )
-
-    prepareCorpus(model)
-
-    trainCorpus.reset()
-    testCorpus.reset()
-    model.trainCorpus = trainCorpus
-    model.testCorpus = testCorpus
-    model.evaluator = evaluator
-
-    return model
 
 def saveModel(model):
     #cTr = model.trainCorpus
@@ -99,24 +75,20 @@ def main():
         print("Welcome!")
         #results = model.evaluate() # {'vector_size': 230, 'window': 5, 'min_count': 15, 'epochs': 55, 'negative': 20, 'sample': 1e-05}
 
-        #print(results)
-        if 1:#results != 1.0:
-            #model = M(Doc2Vec.load(MODEL_SAVING_PATH))
-            model = Model.load(MODEL_SAVING_PATH)
-            #prepareCorpus(model)
+        model = Model.load(MODEL_SAVING_PATH)
 
-            relatedAda, unrelatedAda = EvaluationAdapterFactory.createProjectsEvaluationGroups()
-            trainCorpus = CorpusFactory.BERT.createTestCorpus(limit = 1)
-            model.setTrainCorpus(trainCorpus)
-            testCorpus = CorpusFactory.BERT.createTestCorpus()
-            #model.setTrainCorpus(trainCorpus)
-            evaluator = Evaluator(relatedAda, unrelatedAda, testCorpus)
-            evaluator.setSimilarityCheck(similarity)
-            model.evaluator = evaluator
-            evaluator.setModel(model)
-            print(f"Starting evaluation process with evaluator = {evaluator}; test corp len = {len(testCorpus.workingList)}; pairs = {len(evaluator.relatedPairs)}")
-            results = model.evaluate()
-            print(f"Found evaluation value {results}\n")
+        relatedAda, unrelatedAda = EvaluationAdapterFactory.createProjectsEvaluationGroups()
+        trainCorpus = CorpusFactory.BERT.createTestCorpus(limit = 1)
+        model.setTrainCorpus(trainCorpus)
+        testCorpus = CorpusFactory.BERT.createTestCorpus()
+        #model.setTrainCorpus(trainCorpus)
+        evaluator = Evaluator(relatedAda, unrelatedAda, testCorpus)
+        evaluator.setSimilarityCheck(similarity)
+        model.evaluator = evaluator
+        evaluator.setModel(model)
+        print(f"Starting evaluation process with evaluator = {evaluator}; test corp len = {len(testCorpus.workingList)}; pairs = {len(evaluator.relatedPairs)}")
+        results = model.evaluate()
+        print(f"Found evaluation value {results}\n")
 
         end = time()
         print(f"\n\nProcess completed in {(end - start) / 60} min\n")

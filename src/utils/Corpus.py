@@ -71,7 +71,6 @@ class CacheCorpus(Corpus):
         tempStorage.clear()
         self.manager.cacheAdapter.reset()
 
-# createTrainSetAdapter_02_04_25_GOOD
 
 class FlatCorpus(Corpus):
     # will write only projects data, without users

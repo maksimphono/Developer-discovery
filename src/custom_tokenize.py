@@ -5,8 +5,6 @@ from random import sample, random
 from time import sleep
 from json import dumps
 
-#from pymongo.errors import ServerSelectionTimeoutError, CursorNotFound
-
 from src.utils.DatasetManager import DatasetManager, NewDatasetManager
 from src.utils.CacheAdapter import CacheAdapter, EXP_END_OF_DATA, FlatAdapter, Factory_21_04_25_HIGH as CacheFactory
 from src.utils.validators import projectDataIsHighQuality

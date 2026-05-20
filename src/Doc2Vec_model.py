@@ -104,7 +104,6 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         
         self.trainCorpus.onlyID(True) # for training, I have to get only id of each vector as tag
         if not isinstance(self.trainCorpus, Corpus): raise EXP_CORPUS_IS_NONE
-        #if not isinstance(self.manager, ProjectsDatasetManager): raise EXP_MANAGER_IS_NONE
 
         start = time()
         self.build_vocab(self.trainCorpus)
@@ -151,7 +150,6 @@ class Model(gensim.models.doc2vec.Doc2Vec):
 
                 for query in self.testCorpus:
                     vector = self.infer_vector(query.words)
-                    #topK = sorted(searcher.selectKmostSimilar(vector, k))
                     topK = sorted(self.selectKmostSimilar(vector, k))
 
                     predictedRelevant = np.ones(k)
@@ -171,7 +169,6 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         # format = "full" | "mean"
 
         self.trainCorpus.onlyID(True)
-        #performanceGrageScale = {50 : "Random", 60 : "Poor", 70 : "Bad", 80 : "Medium", 92 : "Optimal", 97 : "Perfect"}
         totalDocuments = self.corpus_count
         if random_state != None: randomSeed(random_state)
         indexes = sample(range(totalDocuments), sampleNum)
@@ -213,10 +210,6 @@ class Model(gensim.models.doc2vec.Doc2Vec):
         self.train()
 
         self.trainCorpus.reset()
-        #result = self.assess(5000, silent = True, format = "mean", random_state = 42)
-
-        #self.trainCorpus = CorpusFactory.createFlatTrainDBCorpus_02_04_25_GOOD() # for testing step I must use database adapter for better documents retreival
-        #result = self.test(k = 15)
 
         start = time()
         if self.evaluator != None:
@@ -237,8 +230,6 @@ class Model(gensim.models.doc2vec.Doc2Vec):
                 "sample" : self.sample,
                 "window" : self.window
             }
-        #if result >= -0.4:
-        #    self.save(f"/home/trukhinmaksim/src/src/models/27-05-25_Doc2Vec_dbow_cos_({str(result)[3:]}).model")
 
         return result
 

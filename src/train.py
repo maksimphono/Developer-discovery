@@ -60,9 +60,6 @@ def createModel(**kwargs):
             corpus=testCorpus, 
             model=model
         )
-        #relatedAda, unrelatedAda = EvaluationAdapterFactory.createProjectsEvaluationGroups()
-        #evaluator = Evaluator(relatedAda, unrelatedAda, testCorpus)
-        #evaluator.setSimilarityCheck(similarity)
 
     trainCorpus.reset()
     testCorpus.reset()

@@ -57,6 +57,3 @@ while True:
         manager.reset(totalScannedProjects)
         sleep(random() * 15)
         continue
-    #except CursorNotFound:
-    #    print(f"Error 'CursorNotFound', recreating the manager with totalScannedProjects = {totalScannedProjects}")
-    #    manager.inputAdapter = InputAdapter(skip = totalScannedProjects)

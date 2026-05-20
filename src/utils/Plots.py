@@ -14,7 +14,6 @@ def buildDistributionGraphs(group1, group0):
     plt.figure(figsize=size)
     sns.histplot(group1, color="skyblue", label="Related projects group", kde=True, stat="density", alpha=0.6, bins=60)
     sns.histplot(group0, color="orange", label="Unrelated projects group", kde=True, stat="density", alpha=0.6, bins=60)
-    #plt.title('RelatePorjects')
     plt.xlabel('Cosine similarity value')
     plt.ylabel('Density')
     plt.legend()

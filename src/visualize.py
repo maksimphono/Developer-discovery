@@ -16,11 +16,11 @@ DIR = "/home/trukhinmaksim/src/results/plots"
 NAME = "BERT_COS"
 
 def plotDistributions(group1, group0, postfix):
-    # Sample data (replace with your actual data)cosine_similarity
+    # Sample data cosine_similarity
     plt.figure(figsize=size)
     sns.histplot(group1, color="skyblue", label="Related group (1)", kde=True, stat="density", alpha=0.6, bins=60)
     sns.histplot(group0, color="orange", label="Unrelated group (0)", kde=True, stat="density", alpha=0.6, bins=60)
-    #plt.title('RelatePorjects')
+
     plt.xlabel('Cosine similarity value')
     plt.ylabel('Density')
     plt.legend()
@@ -78,12 +78,6 @@ def plotHeatmap(vectors, labels, path = ""):
         square=True      # Make cells square
     )
 
-    """
-    group_boundaries = np.cumsum([num_items_per_group] * (num_groups -1))
-    for boundary in group_boundaries:
-        plt.axvline(boundary, color='red', linestyle='--', linewidth=1)
-        plt.axhline(boundary, color='red', linestyle='--', linewidth=1)
-    """
 
     plt.tight_layout()
     plt.savefig(path, dpi = 300)

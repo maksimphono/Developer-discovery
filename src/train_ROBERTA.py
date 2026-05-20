@@ -100,7 +100,6 @@ def main():
             print(results, file = file)
     
     except Exception as exp:
-        #model.logger.error(f"Error occured, last best performance score was {Model.bestScore} with parameters {Model.bestParameters}\n")
         model.logger.error(str(exp))
         print("Error occured")
         raise exp
@@ -111,7 +110,6 @@ def main():
         pass
 
 if __name__ == "__main__":    
-    #AutoTuner.configLogger(TUNER_LOG_PATH)
     Model.configLogger(TRAINING_LOG_PATH)
 
     main()

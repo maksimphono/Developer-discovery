@@ -46,8 +46,6 @@ class Evaluator:
         except EXP_END_OF_DATA:
             pass
 
-        # print(f"Got {len(self.relatedPairs)} related pairs")
-        # print(f"Got {len(self.unrelatedPairs)} unrelated pairs")
         if self.logger != None:
             self.logger.info(f"Got {len(self.relatedPairs)} related pairs")
             self.logger.info(f"Got {len(self.unrelatedPairs)} unrelated pairs")
@@ -70,8 +68,6 @@ class Evaluator:
         self.group0 = group0
         u_statistic, p_value = mannwhitneyu(group1, group0, alternative = "greater") # , alternative = "less"
 
-        #if p_value == 0:
-        #    p_value = 1
         return -p_value
     
     def getPlotVectors(self):
@@ -115,7 +111,6 @@ class UsersEvaluator(Evaluator):
         self.tokenizer = tokenizer
 
     def getPlotVectors(self):
-        #return np.array(list(self.memorizedUserVectors.values()))
         vecs = []
         for vec in self.memorizedUserVectors.values():
             vecs.append(vec.cpu().numpy())
@@ -231,9 +226,6 @@ class Factory:
         evaluator = ProjectsAndUsersEvaluator()
         relatedAda, unrelatedAda = EvaluationAdapterFactory.createProjectsEvaluationGroups()
         projectsEvaluator = Evaluator(relatedAda, unrelatedAda, corpus, limit = 100_000)#135718
-
-        #manager = NewDatasetManager(0, inputAdapter = None)
-        #meanAggregator = lambda vectors: np.mean(np.array(vectors), axis = 0)
 
         usersEvaluator = UsersEvaluator(aggregate = meanAggregator, tokenizer = tokenize)
 

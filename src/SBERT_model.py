@@ -99,11 +99,9 @@ class SiameseBert(BertPreTrainedModel):
         self.in_features_for_manual = 1
         self.W = nn.Parameter(torch.randn(self.output_features, self.in_features_for_manual))  # Use nn.Parameter
         self.b = nn.Parameter(torch.randn(self.output_features))
-        #self.fc = nn.Linear(config.hidden_size, 1)
         self.init_weights()
 
         self.logger.info(f"Bert model initialized")
-        # print("Bert initialized")
 
     def prepare(self, epochs = 5, batchSize = 16, optimizer = None, device = DEFAULT_DEVICE, evaluator = None):
         self.batchSize = batchSize
@@ -140,9 +138,9 @@ class SiameseBert(BertPreTrainedModel):
         embedding1 = output1.pooler_output
         embedding2 = output2.pooler_output
 
-        # Calculate similarity (e.g., cosine similarity followed by a linear layer)
+        # Calculate similarity
         similarity = F.cosine_similarity(embedding1, embedding2, dim=1).unsqueeze(1)
-        #prediction = self.fc(similarity.unsqueeze(1))
+
         prediction = torch.bmm(
             similarity.view(
                 similarity.size(0), 
@@ -156,8 +154,6 @@ class SiameseBert(BertPreTrainedModel):
             ).transpose(1, 2)
         ) + self.b.unsqueeze(0)
         prediction = prediction.squeeze(1)
-        # print(f"Prediction shape: {prediction.shape}")
-        # print("forward is called")
         return prediction
 
     def unpackBatch(self, batch):
@@ -176,16 +172,14 @@ class SiameseBert(BertPreTrainedModel):
         totalLoss = 0
 
         for batch in self.trainDataLoader:
-            # print("Starting training one batch")
-            # input()
-            #pairs = createPairsFromBatch(batch)
+            # unpacking one batch
             input_ids_1 = batch['input_ids_1'].to(self.dev)
             attention_mask_1 = batch['attention_mask_1'].to(self.dev)
             input_ids_2 = batch['input_ids_2'].to(self.dev)
             attention_mask_2 = batch['attention_mask_2'].to(self.dev)
             labels = batch['labels'].to(self.dev).unsqueeze(1)
 
-            # print("batch unpacked")
+            # training one batch
             self.optimizer.zero_grad()
             outputs = self(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
             #print("Labels shape:", labels.shape)
@@ -373,13 +367,7 @@ class SiameseRoBerta(RobertaPreTrainedModel):
             ).transpose(1, 2)
         ) + self.b.unsqueeze(0)
         prediction = prediction.squeeze(1)
-        # print(f"Prediction shape: {prediction.shape}")
-        # print("forward is called")
-        #print(f"Raw Predictions:\nMin: {prediction.min()}, Max: {prediction.max()}, mean: {prediction.mean()}, std: {prediction.std()}")
-        #print(f"{prediction.cpu().tolist()}")
-        #if self.logger:
-        #    self.logger.info(f"Raw Predictions:\nMin: {prediction.min()}, Max: {prediction.max()}, mean: {prediction.mean()}, std: {prediction.std()}")
-        #    self.logger.info(f"{prediction.cpu().tolist()}")
+
         return prediction
 
     def unpackBatch(self, batch):
@@ -398,26 +386,20 @@ class SiameseRoBerta(RobertaPreTrainedModel):
         totalLoss = 0
 
         for batch in self.trainDataLoader:
-            # print("Starting training one batch")
-            # input()
-            #pairs = createPairsFromBatch(batch)
+            # unpacking one batch
             input_ids_1 = batch['input_ids_1'].to(self.dev)
             attention_mask_1 = batch['attention_mask_1'].to(self.dev)
             input_ids_2 = batch['input_ids_2'].to(self.dev)
             attention_mask_2 = batch['attention_mask_2'].to(self.dev)
             labels = batch['labels'].to(self.dev).unsqueeze(1)
 
-            # print("batch unpacked")
+            # training one batch
             self.optimizer.zero_grad()
             outputs = self(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
-            #print("Labels shape:", labels.shape)
-            #print("Inputs shape:", outputs.shape)
             loss = self.criterion(outputs, labels)
             loss.backward()
             self.optimizer.step()
             totalLoss += loss.item()
-
-            # print("Train epoch completed")
 
         return totalLoss / len(self.trainDataLoader)
 
@@ -430,27 +412,21 @@ class SiameseRoBerta(RobertaPreTrainedModel):
         with torch.no_grad():
             for batch in self.testDataLoader:
                 #pairs = createPairsFromBatch(batch)
+                # unpacking one batch
                 input_ids_1 = batch['input_ids_1'].to(self.dev)
                 attention_mask_1 = batch['attention_mask_1'].to(self.dev)
                 input_ids_2 = batch['input_ids_2'].to(self.dev)
                 attention_mask_2 = batch['attention_mask_2'].to(self.dev)
                 labels = batch['labels'].to(self.dev).unsqueeze(1)
-                # print("batch unpacked")
 
+                # training one batch
                 outputs = self(input_ids_1, attention_mask_1, input_ids_2, attention_mask_2)
                 loss = self.criterion(outputs, labels)
                 totalLoss += loss.item()
                 predictions = torch.sigmoid(outputs) > 0.45
-                #p = torch.sigmoid(outputs)
-                #print(f"Probabilities:\nMin: {p.min()}, Max: {p.max()}, Mean: {p.mean()}, Std: {p.std()}")
-                #print(p.cpu().tolist())
-                #if self.logger:
-                #    self.logger.info(f"Probabilities:\nMin: {p.min()}, Max: {p.max()}, Mean: {p.mean()}, Std: {p.std()}")
-                #    self.logger.info(p.cpu().tolist())
+
                 correctPredictions += (predictions == labels).sum().item()
                 totalPairsNum += labels.size(0)
-
-                # print("Eval epoch completed")
 
         meanLoss = totalLoss / len(self.testDataLoader)
         accuracy = correctPredictions / totalPairsNum
@@ -474,7 +450,6 @@ class SiameseRoBerta(RobertaPreTrainedModel):
     def call(self, document):
         self.eval()
         # print(f"model is called with {document['input_ids']}")
-        #encoding = tokenizer(text, return_tensors='pt', truncation=True, padding='max_length', max_length=128)  # Or your desired max_length
         input_ids = tensor(document['input_ids']).unsqueeze(0).to(self.dev)
         attention_mask = tensor(document['attention_mask']).unsqueeze(0).to(self.dev)
 
@@ -497,7 +472,6 @@ class SiameseRoBerta(RobertaPreTrainedModel):
             result = self.evaluator.evaluate()
 
         self.logger.info(f"\nEvaluation is completed in {time() - start}; Result = {result}\n")
-        # print(f"\nEvaluation is completed in {time() - start}; Result = {result}\n")
 
         return result
 
