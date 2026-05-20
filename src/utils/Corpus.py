@@ -151,9 +151,9 @@ class MemoryCorpus(CacheCorpus):
 
 
 class Doc2VecCorpus(MemoryCorpus):
-    def __init__(self, adapter = None, limit = np.inf, includeOnlyID = True, createDocument = lambda s: None):
+    def __init__(self, adapter = None, limit = np.inf, max_len = np.inf, includeOnlyID = True, createDocument = lambda s: None):
         super().__init__(adapter = adapter, limit = limit, includeOnlyID = includeOnlyID)
-        self.data = tuple([TaggedDocument(words = doc["tokens"], tags = doc["tags"]) for doc in adapter.load(limit)])
+        self.data = tuple([TaggedDocument(words = doc["tokens"][:int(min(max_len, len(doc["tokens"])))], tags = doc["tags"]) for doc in adapter.load(limit)])
         self.dataOnlyID = tuple()
 
         if includeOnlyID:
@@ -172,7 +172,7 @@ class Doc2VecCorpus(MemoryCorpus):
             self.workingList = self.data
 
 class SBertCorpus(MemoryCorpus):
-    tokenizer = None
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
     @classmethod
     def createTaggedDocument(cls, words : str, tags : list, *args, **kwargs):
@@ -182,11 +182,13 @@ class SBertCorpus(MemoryCorpus):
 
         return encoding
 
-    def __init__(self, adapter = None, limit = np.inf, includeOnlyID = True, max_len = 128):
+    def __init__(self, adapter = None, limit = np.inf, includeOnlyID = True, max_len = 128, tokenize = True):
         super().__init__(adapter, limit, includeOnlyID)
-        SBertCorpus.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
         self.max_len = max_len
-        self.data = tuple([SBertCorpus.createTaggedDocument(words = doc["text"], tags = doc["tags"], truncation=True, padding='max_length', max_length=self.max_len) for doc in adapter.load(limit)]) # return_tensors='pt'
+        if tokenize:
+            self.data = tuple([SBertCorpus.createTaggedDocument(words = doc["text"], tags = doc["tags"], truncation=True, padding='max_length', max_length=self.max_len) for doc in adapter.load(limit)]) # return_tensors='pt'
+        else:
+            self.data = tuple([BatchEncoding(encoding) for encoding in adapter.load(limit)]) # documents are already tokenized when read from the adapter
         self.len = len(self.data)
         self.workingList = self.data
         print("Corpus created sucessfuly")
@@ -268,14 +270,16 @@ class Factory_21_04_25_HIGH:
         return FlatCorpus(adapter, limit = limit)
 
     @classmethod
-    def createFlatTrainCorpus(cls, limit = np.inf):
-        adapter = AdapterFactory_21_04_25.createTrainSetAdapter()
-        return Doc2VecCorpus(adapter, limit = limit)
+    def createFlatTrainCorpus(cls, limit = np.inf, max_len = np.inf):
+        #adapter = AdapterFactory_21_04_25.createTrainSetAdapter()
+        adapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_30-04-25/train_with_readme_tokenized_d2v_30-04-25")#
+        return Doc2VecCorpus(adapter, limit = limit, max_len = max_len)
 
     @classmethod
-    def createFlatTestCorpus(cls, limit = np.inf):
-        adapter = AdapterFactory_21_04_25.createTestSetAdapter()
-        return Doc2VecCorpus(adapter, limit = limit, includeOnlyID = False)
+    def createFlatTestCorpus(cls, limit = np.inf, max_len = np.inf):
+        #adapter = AdapterFactory_21_04_25.createTestSetAdapter()
+        adapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_30-04-25/test_with_readme_tokenized_d2v_30-04-25")#
+        return Doc2VecCorpus(adapter, limit = limit, max_len = max_len, includeOnlyID = False)
 
     @classmethod
     def createTrainDBCorpus(cls, limit = np.inf):
@@ -285,24 +289,50 @@ class Factory_21_04_25_HIGH:
     class BERT:
         @classmethod
         def createTrainCorpus(cls, limit = np.inf, max_len = 128):
-            adapter = AdapterFactory_21_04_25.createTextTrainAdapter()
+            #adapter = AdapterFactory_21_04_25.createTextTrainAdapter()
+            adapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_30-04-25/train_with_readme_tokenized_BERT_30-04-25")
             return SBertCorpus(adapter, limit = limit, max_len = max_len)
 
         @classmethod
         def createTestCorpus(cls, limit = np.inf, max_len = 128):
-            adapter = AdapterFactory_21_04_25.createTextTestAdapter()
-            return SBertCorpus(adapter, limit = limit, max_len = max_len)
-
+            #adapter = AdapterFactory_21_04_25.createTextTestAdapter()
+            adapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_30-04-25/test_with_readme_tokenized_BERT_30-04-25")
+            return SBertCorpus(adapter, limit = limit, max_len = max_len, tokenize=False)
+        
         @classmethod
         def createTrainPairsCorpus(cls, limit = np.inf):
-            adapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/train_tokenized_BERT_21-04-25")
+            adapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_30-04-25/train_with_readme_tokenized_BERT_30-04-25")
             relatedAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/train_related_pairs_idx_1538100_21-04-25")
             unrelatedAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/train_unrelated_pairs_idx_1538100_21-04-25")
             return SBertPairsCorpus(adapter, relatedPairsAdapter = relatedAdapter, unrelatedPairsAdapter = unrelatedAdapter, limit = limit)
 
         @classmethod
         def createTestPairsCorpus(cls, limit = np.inf):
-            adapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/test_tokenized_BERT_21-04-25")
+            adapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_30-04-25/test_with_readme_tokenized_BERT_30-04-25")
             relatedAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/test_related_pairs_idx_271436_21-04-25")
             unrelatedAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/test_unrelated_pairs_idx_271436_21-04-25")
             return SBertPairsCorpus(adapter, relatedPairsAdapter = relatedAdapter, unrelatedPairsAdapter = unrelatedAdapter, limit = limit)
+
+    class RoBERTa:
+        @classmethod
+        def createTestCorpus(cls, limit = np.inf, max_len = 128):
+            #adapter = AdapterFactory_21_04_25.createTextTestAdapter()
+            adapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_30-04-25/test_with_readme_tokenized_RoBERTa_30-04-25")
+            return SBertCorpus(adapter, limit = limit, max_len = max_len, tokenize = False)
+
+        @classmethod
+        def createTrainPairsCorpus(cls, limit = np.inf):
+            #adapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/train_tokenized_RoBERTa_21-04-25")
+            adapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_30-04-25/train_with_readme_tokenized_RoBERTa_30-04-25")
+            relatedAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/train_related_pairs_idx_1538100_21-04-25")
+            unrelatedAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/train_unrelated_pairs_idx_1538100_21-04-25")
+            return SBertPairsCorpus(adapter, relatedPairsAdapter = relatedAdapter, unrelatedPairsAdapter = unrelatedAdapter, limit = limit)
+
+        @classmethod
+        def createTestPairsCorpus(cls, limit = np.inf):
+            #adapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/test_tokenized_RoBERTa_21-04-25")
+            adapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_30-04-25/test_with_readme_tokenized_RoBERTa_30-04-25")
+            relatedAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/test_related_pairs_idx_271436_21-04-25")
+            unrelatedAdapter = FlatAdapter("/home/trukhinmaksim/src/data/cache_21-04-25/test_unrelated_pairs_idx_271436_21-04-25")
+            return SBertPairsCorpus(adapter, relatedPairsAdapter = relatedAdapter, unrelatedPairsAdapter = unrelatedAdapter, limit = limit)
+
