@@ -56,8 +56,6 @@ class Clusterer:
         colors = [palette[label] if label >= 0 else (0.5, 0.5, 0.5) for label in labels]  # Noise points are colored gray
 
         if method == "plotly":
-            pass
-            """
             data = [
                 go.Scatter3d(
                     x = reducedVectors[:, 0],
@@ -95,7 +93,6 @@ class Clusterer:
                 pyo.offline.plot(fig, filename = savePath)
 
             fig.show()
-            """
         else:
             fig = plt.figure(figsize = size)
             ax = fig.add_subplot(111, projection = dimensions)

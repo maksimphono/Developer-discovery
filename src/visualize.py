@@ -55,60 +55,45 @@ def plotHeatmap(vectors, labels, path = ""):
 
     print(f"\nShape of similarity matrix: {similarity_matrix.shape}")
 
-# --- 3. Reorder the Matrix based on Ground Truth Labels ---
-# This is crucial for visualizing the clusters.
-# We'll sort the indices based on the labels.
-
-# Get the sorted indices
+    # Get the sorted indices
     sorted_indices = np.argsort(labels)
 
-# Apply the sorted indices to both rows and columns of the similarity matrix
+    # Apply the sorted indices to both rows and columns of the similarity matrix
     reordered_similarity_matrix = similarity_matrix[sorted_indices, :][:, sorted_indices]
 
-# Also reorder the labels for plotting labels (optional)
+    # Also reorder the labels for plotting labels (optional)
     reordered_labels = labels[sorted_indices]
 
     print("\nMatrix reordered based on ground truth labels.")
 
-# --- 4. Plot the Heatmap ---
+    # Plot the Heatmap
 
     plt.figure(figsize=size)
     sns.heatmap(
         reordered_similarity_matrix,
-        cmap='viridis', # Choose a colormap. 'viridis', 'magma', 'hot' are good for similarity
-        # cmap='coolwarm', # Good for showing positive/negative similarity if scores can be negative
+        cmap='viridis',
         annot=False,     # Set to True to show similarity values on the heatmap (can be cluttered)
         fmt=".2f",       # Format for annotations if annot=True
         cbar=True,       # Show color bar
         square=True      # Make cells square
     )
 
-#plt.title('Heatmap of Model Similarity Matrix (Reordered by Ground Truth)')
-    ##plt.xlabel('Item Index (Reordered)')
-    #plt.ylabel('Item Index (Reordered)')
-
-# Optional: Add lines to visually separate the groups
     """
     group_boundaries = np.cumsum([num_items_per_group] * (num_groups -1))
     for boundary in group_boundaries:
         plt.axvline(boundary, color='red', linestyle='--', linewidth=1)
         plt.axhline(boundary, color='red', linestyle='--', linewidth=1)
     """
-# Optional: Add group labels if desired (more complex for many items)
-# You could manually add text annotations at the center of each block.
 
     plt.tight_layout()
     plt.savefig(path, dpi = 300)
 
 
 def build(evaluator, postfix):
-    #vecs = generate_clustered_data(n_points_per_cluster=5, n_clusters=2, cluster_std=0.01)[0]
     group1 = evaluator.group1
     group0 = evaluator.group0 
 
     vecs = evaluator.getPlotVectors()
-    #indices = np.random.choice(arr.shape[0], 1000, replace = False)
-    #vecs = arr[indices]
 
     plotDistributions(group1, group0, postfix)
 
