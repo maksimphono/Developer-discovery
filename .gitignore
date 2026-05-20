@@ -9,7 +9,7 @@ data/*
 logs/*.json
 logs/*.log
 logs/ignoreUsers.json
-src/utils/__pycache__
+*__pycache__*
 *.pyc
 results/*
 src/models/*
