@@ -17,14 +17,11 @@ from src.utils.validators import projectDataIsSufficient
 from src.utils.Corpus import CacheCorpus, Factory_21_04_25_HIGH as CorpusFactory
 from src.utils.Evaluator import Evaluator, Factory as EvaluatorFactory
 from src.utils.helpers import cosineSimilarity as similarity #eucledianDistance as similarity
+from src.SBERT_model import SiameseRoBerta as Model
 
-from src.visualize import build
 from skopt.space import Real, Integer
-from src.utils.AutoTuner import AutoTuner, Param
-from src.Doc2Vec_model import Model
-from gensim.models import Doc2Vec
 
-MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/27-05-25_Doc2Vec_dm_cos_(7334441358565227e-128).model"
+MODEL_SAVING_PATH = "/home/trukhinmaksim/src/src/models/27-05-25_RoBERTa.model"
 RESULTS_RECORD_PATH = "/home/trukhinmaksim/src/results/19-05-25_evaluatuin.result"
 TUNER_LOG_PATH = "/home/trukhinmaksim/src/logs/19-05-25_autotunning.log"
 TRAINING_LOG_PATH = "/home/trukhinmaksim/src/logs/19-05-25_training.log"
@@ -96,33 +93,38 @@ class M:
 
 def main():
     start = time()
-
+    """
     model = createModel( # 231, 'window': 9, 'min_count': 14, 'epochs': 45, 'negative': 18, 'sample': 3.767143405439004e-05
         workers = 32,
         epochs = 1,
-        vector_size = 10,
+        vector_size = 4,
         window = 1,
         min_count = 1,
     )
-    evaluator.logger = None
+    """
     try:
         # danger zone! Progress must be saved if error occure
         print("Welcome!")
-        results = model.evaluate() # {'vector_size': 230, 'window': 5, 'min_count': 15, 'epochs': 55, 'negative': 20, 'sample': 1e-05}
+        #results = model.evaluate() # {'vector_size': 230, 'window': 5, 'min_count': 15, 'epochs': 55, 'negative': 20, 'sample': 1e-05}
 
-        print(results)
-        return
+        #print(results)
         if 1:#results != 1.0:
-            #saveModel(model)
-            model = M(Doc2Vec.load(MODEL_SAVING_PATH))
-            prepareCorpus(model)
+            #model = M(Doc2Vec.load(MODEL_SAVING_PATH))
+            model = Model.load(MODEL_SAVING_PATH)
+            #prepareCorpus(model)
+
+            relatedAda, unrelatedAda = EvaluationAdapterFactory.createProjectsEvaluationGroups()
+            trainCorpus = CorpusFactory.RoBERTa.createTestCorpus(limit = 1)
+            model.setTrainCorpus(trainCorpus)
+            testCorpus = CorpusFactory.RoBERTa.createTestCorpus()
+            #model.setTrainCorpus(trainCorpus)
+            evaluator = Evaluator(relatedAda, unrelatedAda, testCorpus)
+            evaluator.setSimilarityCheck(similarity)
+            model.evaluator = evaluator
             evaluator.setModel(model)
-            testCorpus.reset()
-            print(f"\nReady to evaluate model, evaluator = {repr(evaluator)}")
-            results = evaluator.evaluate()
+            print(f"Starting evaluation process with evaluator = {evaluator}; test corp len = {len(testCorpus.workingList)}; pairs = {len(evaluator.relatedPairs)}")
+            results = model.evaluate()
             print(f"Found evaluation value {results}\n")
-            build(evaluator.usersEvaluator, "users")
-            build(evaluator.projectsEvaluator, "projects")
 
         end = time()
         print(f"\n\nProcess completed in {(end - start) / 60} min\n")
@@ -132,9 +134,9 @@ def main():
             print(results, file = file)
 
     except Exception as exp:
-        print(f"Error occured, last best performance score was {Model.bestScore} with parameters {Model.bestParameters}\n")
+        print(f"Error occured")
         print(str(exp))
-        raise exp
+        print("Error occured")
         exit(1)
 
     finally:
